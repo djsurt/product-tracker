@@ -1,0 +1,85 @@
+# Phase 0 stack: api + postgres + redis.
+# The worker, beat, mock-store, and mailhog services get added in later phases.
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-deals}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-deals}
+      POSTGRES_DB: ${POSTGRES_DB:-deals}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-deals}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    env_file: .env
+    environment:
+      MOCK_STORE_URL: http://mock-store:9000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Apply migrations, then serve. --reload + bind mount = live edits in dev.
+    command: sh -c "alembic upgrade head && uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload"
+    volumes:
+      - .:/app
+
+  # Standalone fake storefront with prices that drift over time.
+  mock-store:
+    build: .
+    command: uvicorn mock_store.main:app --host 0.0.0.0 --port 9000 --reload
+    ports:
+      - "9000:9000"
+    volumes:
+      - .:/app
+
+  # Celery worker: pulls jobs off the Redis queue and does the fetching.
+  # Scale horizontally with: docker compose up --scale worker=3
+  worker:
+    build: .
+    env_file: .env
+    environment:
+      MOCK_STORE_URL: http://mock-store:9000
+    command: celery -A workers.celery_app worker --loglevel=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+
+  # Celery Beat: the scheduler. Enqueues the refresh sweep on an interval.
+  beat:
+    build: .
+    env_file: .env
+    command: celery -A workers.celery_app beat --loglevel=info
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+
+volumes:
+  pgdata:

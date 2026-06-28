@@ -1,0 +1,31 @@
+# --- Phase 0 dependencies ---
+# Lower-bound pins: recent enough to ship prebuilt wheels for Python 3.12-3.14,
+# loose enough not to fight the local interpreter. We can switch to a lockfile
+# (uv/pip-tools) later if reproducibility becomes important.
+
+# API
+fastapi>=0.115
+uvicorn[standard]>=0.32
+pydantic[email]>=2.12
+pydantic-settings>=2.7
+
+# Database
+sqlalchemy>=2.0.36
+psycopg[binary]>=3.2.13
+alembic>=1.14
+
+# Cache / broker client (used heavily from Phase 2 on)
+redis>=5.2
+
+# Async jobs (Phase 2): Celery workers + Beat scheduler, Redis broker
+celery[redis]>=5.4
+
+# Auth (Phase 1): JWT tokens + password hashing + form login parsing
+pyjwt>=2.9
+bcrypt>=4.2
+python-multipart>=0.0.9
+
+# Dev / test
+pytest>=8.2
+httpx>=0.28
+fakeredis>=2.23   # in-memory Redis for unit tests (cache/ratelimit/lock)

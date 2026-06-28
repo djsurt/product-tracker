@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Env / secrets
+.env
+.env.local
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Node (frontend, later phases)
+node_modules/
+dist/
+
+# Celery Beat runtime schedule state (written by the beat container)
+celerybeat-schedule*
