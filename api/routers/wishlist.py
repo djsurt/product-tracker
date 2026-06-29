@@ -15,6 +15,8 @@ from sqlalchemy.orm import Session
 
 from api.deps import get_current_user
 from api.schemas import (
+    AlertCreate,
+    AlertOut,
     BestDealOut,
     OfferOut,
     OffersSummary,
@@ -26,7 +28,7 @@ from api.schemas import (
 )
 from core.cache import cache_best_deal, get_cached_best_deal
 from core.db import get_db
-from core.models import Offer, PricePoint, TrackedProduct, User
+from core.models import Alert, Offer, PricePoint, TrackedProduct, User
 from core.settings import get_settings
 from workers.pipeline import compute_best_deal
 
@@ -205,3 +207,84 @@ def refresh_now(
 
     async_result = refresh_product.delay(str(item_id))
     return RefreshAccepted(task_id=async_result.id)
+
+
+# --- Alert rules (Phase 4) ---
+# Alerts are the rules the notification worker consults when a price_dropped
+# event arrives. They live under a wishlist item and inherit its ownership gate.
+@router.get("/{item_id}/alerts", response_model=list[AlertOut])
+def list_alerts(
+    item_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[Alert]:
+    _get_owned(item_id, user, db)  # ownership gate
+    return list(
+        db.scalars(
+            select(Alert)
+            .where(Alert.tracked_product_id == item_id)
+            .order_by(Alert.created_at.desc())
+        )
+    )
+
+
+@router.post(
+    "/{item_id}/alerts",
+    response_model=AlertOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_alert(
+    item_id: uuid.UUID,
+    payload: AlertCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Alert:
+    item = _get_owned(item_id, user, db)
+
+    # A below_target alert needs *some* target to compare against: either an
+    # explicit threshold or the product's target_price. pct_drop needs its own
+    # percentage. Reject rules that could never fire so users aren't surprised.
+    if payload.rule == "below_target" and payload.threshold is None and item.target_price is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="below_target needs a threshold or a target_price on the item",
+        )
+    if payload.rule == "pct_drop" and payload.threshold is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="pct_drop needs a threshold (percentage)",
+        )
+
+    alert = Alert(
+        user_id=user.id,
+        tracked_product_id=item.id,
+        rule=payload.rule,
+        threshold=payload.threshold,
+        channel=payload.channel,
+    )
+    db.add(alert)
+    db.commit()
+    db.refresh(alert)
+    return alert
+
+
+@router.delete(
+    "/{item_id}/alerts/{alert_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+def delete_alert(
+    item_id: uuid.UUID,
+    alert_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    _get_owned(item_id, user, db)  # ownership gate via the parent product
+    alert = db.scalar(
+        select(Alert).where(
+            Alert.id == alert_id,
+            Alert.tracked_product_id == item_id,
+        )
+    )
+    if alert is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    db.delete(alert)
+    db.commit()

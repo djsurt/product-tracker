@@ -37,9 +37,9 @@ Built one phase at a time — each phase is independently runnable and demo-able
 - **Phase 1 — Domain + auth + wishlist CRUD** ✅ JWT auth, `users` + `tracked_products`, per-user CRUD
 - **Phase 2 — Mock store + first adapter + Celery pipeline** ✅ Beat → workers fetch prices into `offers` + `price_history`; prices update on their own
 - **Phase 3 — Real sources + caching + best-deal logic** ✅ eBay/Best Buy adapters (config-gated), Redis cache-aside best-deal, lowest-in-30d verdict, rate limiting + idempotency locks + backoff
-- **Phase 4** — Notifications + redirect
-- **Phase 5** — Scraper adapter + reliability hardening
-- **Phase 6** — Frontend polish + cloud deploy
+- **Phase 4 — Notifications + redirect** ✅ alert rules (`below_target`/`pct_drop`), price-drop event → notify worker → email (MailHog), debounce, `/go/{offer_id}` click-logging redirect
+- **Phase 5 — Scraper adapter + reliability hardening** ✅ HTML `ScraperSource` (httpx + BeautifulSoup), dead-letter table on exhausted retries, structured logging (structlog), Prometheus `/metrics`, horizontal worker scaling
+- **Phase 6 — Frontend + cloud deploy** ✅ server-rendered HTMX UI (`/app`) with live-polling prices + SVG price chart, cookie auth, `render.yaml` deploy blueprint
 
 ## Running locally
 
@@ -102,6 +102,99 @@ curl localhost:8000/wishlist/$ID/offers/$OFFER_ID/history -H "authorization: Bea
 The mock storefront is at `http://localhost:9000` (`/search?q=...`). Scale workers
 with `docker compose up --scale worker=3`.
 
+### Get alerted on a price drop (Phase 4)
+
+When a tracked offer's price falls, `fetch_offer` emits a `price_dropped` event
+(a separate `notify` task), which checks your **alert rules** and emails you —
+captured by **MailHog** so nothing real is sent. Open the inbox at
+`http://localhost:8025`.
+
+```bash
+# create an alert rule on a wishlist item (TOKEN + ID as above):
+#   below_target -> fire when the best price <= threshold (or the item's target_price)
+curl -X POST localhost:8000/wishlist/$ID/alerts \
+  -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+  -d '{"rule":"below_target","threshold":"250.00"}'
+
+#   pct_drop -> fire when an offer falls by >= threshold percent
+curl -X POST localhost:8000/wishlist/$ID/alerts \
+  -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+  -d '{"rule":"pct_drop","threshold":"10"}'
+
+# refresh a few times until the mock price drifts down, then check MailHog:
+#   http://localhost:8025
+```
+
+Each email links to `GET /go/{offer_id}` — our redirect. It logs the click
+(`click_events`) and 302s to the store, keeping our app the source of truth for
+which deals users act on. The same alert won't re-fire within
+`ALERT_DEBOUNCE_SECONDS` (default 1h).
+
+### Reliability + observability (Phase 5)
+
+**Scraper source.** A fourth adapter, `ScraperSource`, parses HTML instead of
+calling an API (httpx + BeautifulSoup). It scrapes the mock store's own
+`/html/...` pages, so you learn fragile DOM parsing against a target you control.
+Enable it with `SCRAPER_ENABLED=true`; it then appears in `active_sources`
+alongside `mock` and every wishlist item gains scraped offers too. (For a
+JS-rendered site you'd swap the fetch for Playwright behind the same interface.)
+
+**Dead-letter queue.** When `fetch_offer` (or `notify`) exhausts its retries, it
+doesn't fail forever or vanish — it parks a row in `dead_letters` and marks the
+offer stale (`is_available=false`) so its bad price isn't trusted. Inspect with:
+
+```bash
+docker compose exec postgres psql -U deals -d deals -c \
+  'select task_name, retries, error, created_at from dead_letters order by created_at desc limit 10;'
+```
+
+**Structured logs.** Workers and the API log one structured event per line via
+structlog (console locally, JSON elsewhere) — `docker compose logs -f worker`
+shows `fetch_offer.ok offer_id=… source=… price=…`, so you can trace a price
+through the pipeline.
+
+**Metrics.** `GET /metrics` exposes Prometheus counters (fetch successes/retries/
+failures, dead-letters, notifications, redirect clicks). They're stored in Redis
+so counts aggregate across *all* worker processes, not just one:
+
+```bash
+curl localhost:8000/metrics
+```
+
+**Horizontal scale.** Workers are stateless; run more of them and the Redis
+queue load-balances across them. The per-offer idempotency lock (Phase 3) keeps
+two workers from double-writing the same offer:
+
+```bash
+docker compose up --scale worker=3
+```
+
+### The web UI (Phase 6)
+
+With the stack up, open **`http://localhost:8000/app`** (the JSON API stays at
+its routes; the browser UI is a parallel face over the same data). Register,
+add a wishlist item, and open it — the offers panel **auto-refreshes every 5s**
+via htmx and shows a live best-deal badge and an inline SVG price chart. It's a
+server-rendered **HTMX + Jinja** app (no separate frontend build); auth is a
+httponly session cookie carrying the same JWT the API uses.
+
+```
+/login  /register        auth pages (sets the session cookie)
+/app                     your wishlist (add / delete items)
+/app/items/{id}          live offers, best deal, price chart, alert rules
+```
+
+### Cloud deploy
+
+`render.yaml` is a [Render](https://render.com) blueprint describing the whole
+stack — managed Postgres + Redis and three services (web, worker, beat) off the
+single `Dockerfile`, the cloud mirror of `docker-compose.yml`. Connect the repo
+in Render (or `render blueprint launch`); it runs `alembic upgrade head` on
+deploy. After the first deploy, set `APP_BASE_URL` to the public web URL and add
+any `SMTP_*` / source API keys you want live. `JWT_SECRET` is generated for you.
+Bare `postgres://` connection strings are auto-upgraded to the psycopg driver
+(`core/db.py`), so the managed `DATABASE_URL` works unchanged.
+
 ## Tests
 
 ```bash
@@ -112,6 +205,7 @@ pytest
 
 ```
 api/          FastAPI app (routers, app entrypoint)
+api/templates/ Jinja templates for the HTMX UI    (Phase 6)
 core/         shared: settings, db/session, ORM models
 workers/      Celery app + tasks            (Phase 2+)
 sources/      price-source adapters          (Phase 2+)

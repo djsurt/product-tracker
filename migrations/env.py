@@ -9,14 +9,15 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from core.db import Base
+from core.db import Base, _normalize_db_url
 from core.settings import get_settings
 
 # Import models so they register on Base.metadata (no-op in Phase 0).
 import core.models  # noqa: F401
 
 config = context.config
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+# Normalize so a managed host's bare postgres:// URL gets the psycopg driver too.
+config.set_main_option("sqlalchemy.url", _normalize_db_url(get_settings().database_url))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

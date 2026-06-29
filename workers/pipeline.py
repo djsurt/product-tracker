@@ -16,7 +16,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from core.models import Offer, PricePoint, TrackedProduct
+from core.models import DeadLetter, Offer, PricePoint, TrackedProduct
 from sources.base import NormalizedOffer, PriceSource
 
 
@@ -82,6 +82,43 @@ def get_offer(db: Session, offer_id: str | uuid.UUID) -> Offer | None:
     if isinstance(offer_id, str):
         offer_id = uuid.UUID(offer_id)
     return db.get(Offer, offer_id)
+
+
+def record_dead_letter(
+    db: Session,
+    offer_id: str | uuid.UUID | None,
+    task_name: str,
+    error: str,
+    retries: int,
+    *,
+    mark_offer_unavailable: bool = True,
+) -> DeadLetter:
+    """Park a permanently-failed task and (optionally) mark its offer stale.
+
+    Marking the offer unavailable means best-deal logic stops trusting its last
+    (possibly bogus) price until a future fetch succeeds and revives it — the
+    right call when a *fetch* gave up, since the price can no longer be trusted.
+    But a failure unrelated to price (e.g. the notify task couldn't reach SMTP)
+    must NOT condemn a perfectly good offer, so those callers pass
+    `mark_offer_unavailable=False`.
+    """
+    if isinstance(offer_id, str):
+        offer_id = uuid.UUID(offer_id)
+
+    if offer_id is not None and mark_offer_unavailable:
+        offer = db.get(Offer, offer_id)
+        if offer is not None:
+            offer.is_available = False
+
+    dl = DeadLetter(
+        offer_id=offer_id,
+        task_name=task_name,
+        error=error[:4000],  # guard against giant tracebacks
+        retries=retries,
+    )
+    db.add(dl)
+    db.flush()
+    return dl
 
 
 @dataclass
@@ -153,6 +190,10 @@ def compute_best_deal(
         db.scalars(select(Offer).where(Offer.tracked_product_id == tracked_product.id))
     )
     priced = [o for o in offers if o.is_available and o.last_price is not None]
+    # NOTE: this compares raw last_price across offers, which assumes a single
+    # currency. Today every active source reports USD; once a source emits a
+    # different currency (e.g. RapidAPI returning GBP), picking the numerically
+    # smallest price is wrong and this needs an FX-normalized comparison.
     best = min(priced, key=lambda o: o.last_price, default=None)
 
     low = lowest_in_window(db, [o.id for o in offers], window_days)

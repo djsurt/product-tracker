@@ -9,9 +9,33 @@ a new file, not a change to the pipeline.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Protocol, runtime_checkable
+
+# Pull the first number (optional thousands separators / decimals) out of a
+# messy price string like "$1,199.00" or "USD 49.99". Shared by every adapter
+# that parses display prices, so a parsing fix lands in one place.
+_PRICE_RE = re.compile(r"[\d,]+\.?\d*")
+
+
+def parse_price(raw: object) -> Decimal | None:
+    """Extract a Decimal from a money string, or None if there's no usable value.
+
+    Defensive on purpose: a regex match isn't a guarantee of a parseable number
+    (e.g. "," or "."), so the Decimal() conversion is guarded — a bad price means
+    "skip this offer", never an exception that aborts a whole discovery batch.
+    """
+    if raw is None:
+        return None
+    match = _PRICE_RE.search(str(raw))
+    if not match:
+        return None
+    try:
+        return Decimal(match.group(0).replace(",", ""))
+    except InvalidOperation:
+        return None
 
 
 @dataclass(frozen=True)

@@ -25,6 +25,16 @@ pyjwt>=2.9
 bcrypt>=4.2
 python-multipart>=0.0.9
 
+# Scraping (Phase 5): parse HTML price pages. httpx (already present) fetches;
+# BeautifulSoup parses. Swap to Playwright for JS-rendered targets.
+beautifulsoup4>=4.12
+
+# Observability (Phase 5): structured JSON logs
+structlog>=24.4
+
+# Frontend (Phase 6): server-rendered HTMX UI via Jinja templates
+jinja2>=3.1
+
 # Dev / test
 pytest>=8.2
 httpx>=0.28

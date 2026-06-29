@@ -1,0 +1,27 @@
+{% if items %}
+<div class="card">
+  <table>
+    <thead>
+      <tr><th>Product</th><th>Query</th><th>Target</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td><a href="/app/items/{{ item.id }}">{{ item.title }}</a></td>
+        <td class="muted">{{ item.query }}</td>
+        <td class="price">{% if item.target_price is not none %}${{ item.target_price }}{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td>{% if item.is_active %}<span class="badge great">active</span>{% else %}<span class="badge no_data">paused</span>{% endif %}</td>
+        <td style="text-align:right;">
+          <button class="danger"
+                  hx-delete="/app/items/{{ item.id }}"
+                  hx-target="#items" hx-swap="innerHTML"
+                  hx-confirm="Stop tracking {{ item.title }}?">Delete</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card empty">No items yet — add a product above to start tracking its price.</div>
+{% endif %}

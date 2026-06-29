@@ -22,8 +22,10 @@ from sqlalchemy import (
     Boolean,
     ForeignKey,
     Index,
+    Integer,
     Numeric,
     String,
+    Text,
     UniqueConstraint,
     func,
 )
@@ -69,6 +71,11 @@ class TrackedProduct(Base):
 
     user: Mapped[User] = relationship(back_populates="tracked_products")
     offers: Mapped[list[Offer]] = relationship(
+        back_populates="tracked_product",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    alerts: Mapped[list[Alert]] = relationship(
         back_populates="tracked_product",
         cascade="all, delete-orphan",
         lazy="selectin",
@@ -135,3 +142,81 @@ class PricePoint(Base):
     observed_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     offer: Mapped[Offer] = relationship(back_populates="price_points")
+
+
+class Alert(Base):
+    """A user's rule for when to be notified about a wishlist item (Phase 4).
+
+    Keeping alerts as their own rows — rather than reusing the product's
+    `target_price` — lets one product carry several independent rules
+    ("below $300" AND "any 10% drop") and gives us a place to debounce each one
+    via `last_fired_at`. The notify worker reads these rows to decide whether a
+    `price_dropped` event should actually reach the user.
+    """
+
+    __tablename__ = "alerts"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    tracked_product_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tracked_products.id", ondelete="CASCADE"), index=True
+    )
+
+    # "below_target" (best price <= threshold) or "pct_drop" (offer fell >= N%).
+    rule: Mapped[str] = mapped_column(String(50))
+    # For below_target this is a price; for pct_drop a percentage (e.g. 10).
+    # Nullable so a below_target alert can fall back to the product's target_price.
+    threshold: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    channel: Mapped[str] = mapped_column(String(50), default="email")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Debounce anchor: we won't re-fire the same alert within a cooldown window.
+    last_fired_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+    tracked_product: Mapped[TrackedProduct] = relationship(back_populates="alerts")
+
+
+class ClickEvent(Base):
+    """An outbound click through our /go/{offer_id} redirect (Phase 4).
+
+    Logging the click before redirecting keeps our app the source of truth for
+    "which deals did users actually act on" — the hook future affiliate
+    attribution would hang off. The redirect link is followed straight from an
+    email, so there's no authenticated user; we just record the offer + time.
+    """
+
+    __tablename__ = "click_events"
+    __table_args__ = (
+        Index("ix_click_events_offer_clicked", "offer_id", "clicked_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    offer_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("offers.id", ondelete="CASCADE")
+    )
+    clicked_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class DeadLetter(Base):
+    """A task that failed permanently, after exhausting its retries (Phase 5).
+
+    The reliability lesson: a job that keeps failing shouldn't retry forever or
+    vanish silently. We park a record here (the "dead-letter queue" pattern) so
+    a human can inspect what broke without it blocking the pipeline, and we mark
+    the offer stale so its bad price isn't trusted. `offer_id` is nullable so we
+    can still record failures that aren't tied to a surviving offer row.
+    """
+
+    __tablename__ = "dead_letters"
+    __table_args__ = (Index("ix_dead_letters_created", "created_at"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    offer_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("offers.id", ondelete="SET NULL"), nullable=True
+    )
+    task_name: Mapped[str] = mapped_column(String(255))
+    error: Mapped[str] = mapped_column(Text)
+    retries: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())

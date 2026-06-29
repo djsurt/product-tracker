@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from sources.bestbuy import BestBuySource
 from sources.ebay import EbaySource
+from sources.rapidapi import RapidApiProductSource, _parse_price
 
 
 def test_ebay_to_offer():
@@ -49,3 +50,35 @@ def test_bestbuy_to_offer():
     assert offer.price == Decimal("279.99")
     assert offer.currency == "USD"
     assert offer.available is True
+
+
+def test_rapidapi_price_parsing():
+    assert _parse_price("$1,199.00") == Decimal("1199.00")
+    assert _parse_price("£49.99") == Decimal("49.99")
+    assert _parse_price("299") == Decimal("299")
+    assert _parse_price(None) is None
+    assert _parse_price("call for price") is None
+
+
+def test_rapidapi_to_offer():
+    product = {
+        "product_id": "abc123",
+        "product_title": "Sony WH-1000XM5 Wireless Headphones",
+        "product_page_url": "https://google.com/shopping/product/abc123",
+        "offer": {
+            "store_name": "Walmart",
+            "price": "$1,199.00",
+            "offer_page_url": "https://walmart.com/ip/123",
+        },
+    }
+    offer = RapidApiProductSource()._to_offer(product)
+    assert offer.source == "rapidapi"
+    assert offer.source_product_id == "abc123"
+    assert offer.price == Decimal("1199.00")
+    assert offer.url == "https://walmart.com/ip/123"
+    assert offer.available is True
+
+
+def test_rapidapi_skips_unpriced_product():
+    product = {"product_id": "x", "product_title": "x", "offer": {"price": None}}
+    assert RapidApiProductSource()._to_offer(product) is None

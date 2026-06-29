@@ -1,0 +1,39 @@
+<div class="row" style="justify-content:space-between;align-items:flex-end;margin:14px 0;">
+  <div>
+    <div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.4px;">Best deal</div>
+    {% if deal.best_price is not none %}
+      <div class="price" style="font-size:26px;">${{ deal.best_price }} <span class="muted" style="font-size:14px;">{{ deal.currency }}</span></div>
+    {% else %}
+      <div class="muted">No priced offers yet</div>
+    {% endif %}
+  </div>
+  <div style="text-align:right;">
+    <span class="badge {{ deal.verdict }}">{{ deal.verdict | replace("_", " ") }}</span>
+    {% if deal.lowest_in_window is not none %}
+      <div class="muted" style="font-size:12px;margin-top:4px;">Low in {{ deal.window_days }}d: ${{ deal.lowest_in_window }}</div>
+    {% endif %}
+  </div>
+</div>
+
+{% if spark %}<div style="margin-bottom:12px;">{{ spark | safe }}</div>{% endif %}
+
+{% if offers %}
+<table>
+  <thead><tr><th>Source</th><th>Title</th><th>Price</th><th>Stock</th><th></th></tr></thead>
+  <tbody>
+    {% for o in offers %}
+    <tr {% if deal.best_offer_id and o.id == deal.best_offer_id %}style="background:rgba(62,207,142,.06);"{% endif %}>
+      <td>{{ o.source }}</td>
+      <td class="muted">{{ o.title }}</td>
+      <td class="price">{% if o.last_price is not none %}${{ o.last_price }}{% else %}—{% endif %}</td>
+      <td>{% if o.is_available %}<span class="badge great">in stock</span>{% else %}<span class="badge no_data">stale</span>{% endif %}</td>
+      <td style="text-align:right;">
+        {% if o.url %}<a href="/go/{{ o.id }}" target="_blank" rel="noopener">Buy →</a>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">No offers discovered yet. Hit “Refresh now” and give the workers a moment.</div>
+{% endif %}

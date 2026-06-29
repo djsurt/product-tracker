@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Your wishlist · Deal Hunter{% endblock %}
+{% block content %}
+<h1>Your wishlist</h1>
+
+<div class="card">
+  <h2>Track a new product</h2>
+  <form hx-post="/app/items" hx-target="#items" hx-swap="innerHTML" hx-on::after-request="if(event.detail.successful) this.reset()">
+    <div class="row">
+      <div class="grow">
+        <label for="title">Title</label>
+        <input style="width:100%" id="title" name="title" placeholder="Sony WH-1000XM5" required>
+      </div>
+      <div class="grow">
+        <label for="query">Search query</label>
+        <input style="width:100%" id="query" name="query" placeholder="sony wh-1000xm5" required>
+      </div>
+      <div>
+        <label for="target_price">Target price</label>
+        <input style="width:120px" id="target_price" name="target_price" type="number" step="0.01" min="0" placeholder="299.99">
+      </div>
+      <div style="align-self:flex-end;">
+        <button type="submit">Add</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div id="items">
+  {% include "_items.html" %}
+</div>
+{% endblock %}

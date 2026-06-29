@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Deal Hunter{% endblock %}</title>
+  <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+  <style>
+    :root {
+      --bg: #0f1117; --panel: #1a1d27; --panel-2: #232735;
+      --text: #e6e8ef; --muted: #9aa0b4; --line: #2c3142;
+      --accent: #6c8cff; --good: #3ecf8e; --warn: #f6c177; --bad: #ff6b6b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+    }
+    a { color: var(--accent); text-decoration: none; }
+    header.topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--panel);
+    }
+    header.topbar .brand { font-weight: 700; letter-spacing: .3px; }
+    .container { max-width: 920px; margin: 0 auto; padding: 24px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .grow { flex: 1; min-width: 120px; }
+    h1 { font-size: 30px; line-height: 1.2; margin: 0 0 18px; letter-spacing: -.01em; }
+    h2 { font-size: 19px; margin: 0 0 12px; }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    input, select, button {
+      font: inherit; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line);
+      background: var(--panel-2); color: var(--text);
+    }
+    button { background: var(--accent); border-color: var(--accent); color: #0b0e17; font-weight: 600; cursor: pointer; }
+    button.secondary { background: var(--panel-2); color: var(--text); }
+    button.danger { background: transparent; color: var(--bad); border-color: var(--bad); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+    .muted { color: var(--muted); }
+    .price { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .badge.below_target, .badge.all_time_low { background: rgba(62,207,142,.15); color: var(--good); }
+    .badge.great { background: rgba(108,140,255,.15); color: var(--accent); }
+    .badge.fair { background: rgba(246,193,119,.15); color: var(--warn); }
+    .badge.no_data { background: var(--panel-2); color: var(--muted); }
+    .error { color: var(--bad); font-size: 13px; margin: 8px 0 0; }
+    .empty { color: var(--muted); padding: 16px 0; }
+    .spark { display: block; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🛒 Deal Hunter</div>
+    <nav class="row">
+      {% if user %}
+        <a href="/app">Wishlist</a>
+        <form method="post" action="/logout" style="margin:0">
+          <button class="secondary" type="submit">Log out</button>
+        </form>
+      {% else %}
+        <a href="/login">Log in</a>
+        <a href="/register">Register</a>
+      {% endif %}
+    </nav>
+  </header>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

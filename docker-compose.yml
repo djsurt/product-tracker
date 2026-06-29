@@ -1,5 +1,4 @@
-# Phase 0 stack: api + postgres + redis.
-# The worker, beat, mock-store, and mailhog services get added in later phases.
+# Full stack: api + worker + beat + postgres + redis + mock-store + mailhog.
 
 services:
   postgres:
@@ -33,6 +32,8 @@ services:
     env_file: .env
     environment:
       MOCK_STORE_URL: http://mock-store:9000
+      SMTP_HOST: mailhog
+      SMTP_PORT: "1025"
     ports:
       - "8000:8000"
     depends_on:
@@ -61,6 +62,8 @@ services:
     env_file: .env
     environment:
       MOCK_STORE_URL: http://mock-store:9000
+      SMTP_HOST: mailhog
+      SMTP_PORT: "1025"
     command: celery -A workers.celery_app worker --loglevel=info
     depends_on:
       postgres:
@@ -80,6 +83,14 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
+
+  # MailHog: a dev SMTP server that captures outbound mail instead of delivering
+  # it. SMTP on 1025 (workers send here), web UI on 8025 (open it to read alerts).
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
 
 volumes:
   pgdata:

@@ -11,6 +11,8 @@ from sources.base import PriceSource
 from sources.bestbuy import BestBuySource
 from sources.ebay import EbaySource
 from sources.mock import MockStoreSource
+from sources.rapidapi import RapidApiProductSource
+from sources.scraper import ScraperSource
 
 
 def _build_registry() -> dict[str, PriceSource]:
@@ -21,6 +23,10 @@ def _build_registry() -> dict[str, PriceSource]:
         sources.append(EbaySource())
     if s.bestbuy_api_key:
         sources.append(BestBuySource())
+    if s.rapidapi_key:
+        sources.append(RapidApiProductSource())
+    if s.scraper_enabled:
+        sources.append(ScraperSource())
 
     return {src.name: src for src in sources}
 

@@ -12,9 +12,11 @@ a circular import between this module and workers/tasks.py.
 
 from celery import Celery
 
+from core.logging import configure_logging
 from core.settings import get_settings
 
 settings = get_settings()
+configure_logging()
 
 celery_app = Celery(
     "deal_hunter",

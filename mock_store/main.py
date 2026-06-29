@@ -20,6 +20,7 @@ import re
 import time
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 
 app = FastAPI(title="Mock Store", version="0.1.0")
 
@@ -87,3 +88,34 @@ def get_product(source_product_id: str) -> dict:
         raise HTTPException(status_code=404, detail="Unknown product")
     title = source_product_id.replace("--", " ").replace("-", " ").title()
     return _product_payload(source_product_id, title)
+
+
+# --- HTML faces of the same data, for the Phase 5 scraper to parse ---------
+# The scraper adapter doesn't get the clean JSON above; it gets this markup and
+# must dig the price out of the DOM — exactly the "scraping is fragile" lesson,
+# but against a target we control (no captchas, no bans).
+def _product_card(p: dict) -> str:
+    return f"""
+    <div class="product" data-product-id="{p['source_product_id']}">
+      <h2 class="title">{p['title']}</h2>
+      <span class="price" data-currency="{p['currency']}">${p['price']}</span>
+      <a class="buy" href="{p['url']}">Buy now</a>
+      <span class="stock">{'In stock' if p['available'] else 'Sold out'}</span>
+    </div>"""
+
+
+@app.get("/html/search", response_class=HTMLResponse)
+def html_search(q: str) -> str:
+    cards = "\n".join(
+        _product_card(_product_payload(_product_id(q, store), f"{q} ({store})"))
+        for store in STORES
+    )
+    return f"<html><body><main class='results'>{cards}</main></body></html>"
+
+
+@app.get("/html/products/{source_product_id}", response_class=HTMLResponse)
+def html_product(source_product_id: str) -> str:
+    if "--" not in source_product_id:
+        raise HTTPException(status_code=404, detail="Unknown product")
+    title = source_product_id.replace("--", " ").replace("-", " ").title()
+    return f"<html><body>{_product_card(_product_payload(source_product_id, title))}</body></html>"

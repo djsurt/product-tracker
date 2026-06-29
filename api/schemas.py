@@ -13,6 +13,8 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
@@ -107,3 +109,25 @@ class BestDealOut(BaseModel):
     window_days: int
     verdict: str  # below_target | all_time_low | great | fair | no_data
     cached: bool  # was this served from the Redis cache or freshly computed?
+
+
+# --- Alerts (Phase 4) ---
+class AlertCreate(BaseModel):
+    # "below_target": notify when best price <= threshold (defaults to the
+    # product's target_price). "pct_drop": notify on a >= threshold% drop.
+    rule: Literal["below_target", "pct_drop"]
+    threshold: Decimal | None = Field(default=None, ge=0)
+    channel: Literal["email"] = "email"
+
+
+class AlertOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tracked_product_id: uuid.UUID
+    rule: str
+    threshold: Decimal | None
+    channel: str
+    is_active: bool
+    last_fired_at: datetime | None
+    created_at: datetime

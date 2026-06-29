@@ -1,0 +1,25 @@
+{% if alerts %}
+<table>
+  <thead><tr><th>Rule</th><th>Threshold</th><th>Last fired</th><th></th></tr></thead>
+  <tbody>
+    {% for a in alerts %}
+    <tr>
+      <td>{{ a.rule | replace("_", " ") }}</td>
+      <td class="price">
+        {% if a.threshold is not none %}
+          {{ "$%s" % a.threshold if a.rule == "below_target" else "%s%%" % a.threshold }}
+        {% else %}<span class="muted">(item target)</span>{% endif %}
+      </td>
+      <td class="muted">{{ a.last_fired_at.strftime("%Y-%m-%d %H:%M") if a.last_fired_at else "—" }}</td>
+      <td style="text-align:right;">
+        <button class="danger"
+                hx-delete="/app/items/{{ a.tracked_product_id }}/alerts/{{ a.id }}"
+                hx-target="#alerts" hx-swap="innerHTML">Remove</button>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">No alerts yet. Add one above to get emailed when the price drops.</div>
+{% endif %}

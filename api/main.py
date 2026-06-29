@@ -8,12 +8,14 @@ Run locally with: uvicorn api.main:app --reload
 from fastapi import Depends, FastAPI
 
 from api.deps import get_current_user
-from api.routers import auth, health, wishlist
+from api.routers import auth, health, metrics, redirect, web, wishlist
 from api.schemas import UserOut
+from core.logging import configure_logging
 from core.models import User
 from core.settings import get_settings
 
 settings = get_settings()
+configure_logging()
 
 app = FastAPI(
     title="Deal Hunter API",
@@ -22,8 +24,11 @@ app = FastAPI(
 )
 
 app.include_router(health.router)
+app.include_router(metrics.router)
 app.include_router(auth.router)
 app.include_router(wishlist.router)
+app.include_router(redirect.router)
+app.include_router(web.router)
 
 
 @app.get("/")
@@ -34,6 +39,7 @@ def root() -> dict:
         "app": "deal-hunter",
         "env": settings.env,
         "docs": "/docs",
+        "ui": "/app",
         "active_sources": active_source_names(),
     }
 
