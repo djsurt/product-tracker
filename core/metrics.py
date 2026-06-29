@@ -52,3 +52,23 @@ def render(client: redis.Redis | None = None) -> str:
         lines.append(f"# TYPE {name} counter")
         lines.append(f"{name} {value}")
     return "\n".join(lines) + "\n"
+
+
+def snapshot(client: redis.Redis | None = None) -> dict[str, int]:
+    """Return counters as a dict for the HTML ops dashboard.
+
+    Like `render`, this is best-effort. If Redis is unavailable, the dashboard
+    should still load and show zeros rather than hiding the rest of the state.
+    """
+    try:
+        r = client or get_redis()
+    except Exception:  # noqa: BLE001
+        return {name: 0 for name in COUNTERS}
+
+    values: dict[str, int] = {}
+    for name in COUNTERS:
+        try:
+            values[name] = int(r.get(f"{_PREFIX}{name}") or 0)
+        except Exception:  # noqa: BLE001
+            values[name] = 0
+    return values

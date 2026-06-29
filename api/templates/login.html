@@ -1,20 +1,21 @@
 {% extends "base.html" %}
 {% block title %}Log in · Deal Hunter{% endblock %}
 {% block content %}
-<div class="card" style="max-width:420px;margin:48px auto;">
-  <h1>Log in</h1>
-  <form method="post" action="/login">
-    <div style="margin-bottom:12px;">
+<div class="card auth-card">
+  <h1>Welcome back</h1>
+  <p class="lead" style="margin-bottom:20px;">Log in to check on your deals.</p>
+  <form method="post" action="/login" class="stack">
+    <div>
       <label for="email">Email</label>
-      <input class="grow" style="width:100%" id="email" name="email" type="email" required autofocus>
+      <input id="email" name="email" type="email" autocomplete="email" required autofocus>
     </div>
-    <div style="margin-bottom:16px;">
+    <div>
       <label for="password">Password</label>
-      <input class="grow" style="width:100%" id="password" name="password" type="password" required>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
     </div>
     <button type="submit" style="width:100%">Log in</button>
     {% if error %}<p class="error">{{ error }}</p>{% endif %}
   </form>
-  <p class="muted" style="margin-top:16px;">No account? <a href="/register">Register</a></p>
+  <p class="hint" style="margin-top:18px;">No account? <a href="/register">Create one</a></p>
 </div>
 {% endblock %}

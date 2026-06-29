@@ -4,65 +4,265 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Deal Hunter{% endblock %}</title>
+  <meta name="theme-color" content="#fbf9f7">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/htmx.org@2.0.3"></script>
   <style>
     :root {
-      --bg: #0f1117; --panel: #1a1d27; --panel-2: #232735;
-      --text: #e6e8ef; --muted: #9aa0b4; --line: #2c3142;
-      --accent: #6c8cff; --good: #3ecf8e; --warn: #f6c177; --bad: #ff6b6b;
+      /* Surfaces — warm-friendly light, kept off-white (not cream): warmth lives in the accent */
+      --bg:        oklch(0.984 0.004 60);
+      --surface:   oklch(1 0 0);
+      --surface-2: oklch(0.968 0.006 60);
+      --surface-3: oklch(0.948 0.008 55);
+
+      /* Ink — deep warm-slate, never pure black */
+      --ink:       oklch(0.27 0.018 60);
+      --ink-soft:  oklch(0.46 0.014 60);
+      --line:      oklch(0.912 0.008 60);
+      --line-soft: oklch(0.952 0.006 60);
+
+      /* Brand accent — friendly persimmon. Deep enough for white text @ AA */
+      --accent:        oklch(0.585 0.158 38);
+      --accent-hover:  oklch(0.525 0.150 38);
+      --accent-ink:    oklch(0.48 0.150 38);   /* accent as text on light surfaces */
+      --accent-tint:   oklch(0.962 0.030 45);
+      --accent-ring:   oklch(0.70 0.140 40 / 0.45);
+
+      /* Semantic — deal verdicts. Always paired with a text label, never color-only */
+      --good:      oklch(0.55 0.130 158);
+      --good-tint: oklch(0.955 0.035 160);
+      --warn:      oklch(0.52 0.105 75);
+      --warn-tint: oklch(0.957 0.045 85);
+      --bad:       oklch(0.55 0.165 22);
+      --bad-tint:  oklch(0.957 0.030 25);
+
+      --radius:    14px;
+      --radius-sm: 10px;
+      --radius-pill: 999px;
+      --shadow-sm: 0 1px 2px oklch(0.27 0.018 60 / 0.05), 0 1px 1px oklch(0.27 0.018 60 / 0.04);
+      --shadow:    0 4px 16px oklch(0.27 0.018 60 / 0.07), 0 1px 3px oklch(0.27 0.018 60 / 0.05);
+      --shadow-lg: 0 12px 32px oklch(0.27 0.018 60 / 0.10), 0 2px 8px oklch(0.27 0.018 60 / 0.06);
+
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+      /* z-index scale */
+      --z-sticky: 100;
+      --z-toast: 600;
     }
+
     * { box-sizing: border-box; }
+
+    html { -webkit-text-size-adjust: 100%; }
     body {
-      margin: 0; font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif;
-      background: var(--bg); color: var(--text);
+      margin: 0;
+      font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      font-size: 15px;
+      line-height: 1.55;
+      background: var(--bg);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
     }
-    a { color: var(--accent); text-decoration: none; }
+
+    a { color: var(--accent-ink); text-decoration: none; font-weight: 500; }
+    a:hover { color: var(--accent-hover); text-decoration: underline; text-underline-offset: 2px; }
+    a:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-ring); border-radius: 4px; }
+
+    ::placeholder { color: var(--ink-soft); opacity: 0.7; }
+    ::selection { background: var(--accent-tint); }
+
+    /* ---- Top bar ---- */
     header.topbar {
+      position: sticky; top: 0; z-index: var(--z-sticky);
       display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--panel);
+      gap: 16px;
+      padding: 14px clamp(16px, 5vw, 28px);
+      background: oklch(1 0 0 / 0.85);
+      backdrop-filter: saturate(1.4) blur(10px);
+      border-bottom: 1px solid var(--line);
     }
-    header.topbar .brand { font-weight: 700; letter-spacing: .3px; }
-    .container { max-width: 920px; margin: 0 auto; padding: 24px; }
-    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+    header.topbar .brand {
+      font-weight: 700; font-size: 17px; letter-spacing: -0.01em;
+      color: var(--ink); display: inline-flex; align-items: center; gap: 8px;
+    }
+    header.topbar .brand .logo {
+      font-size: 18px; line-height: 1;
+      filter: saturate(1.1);
+    }
+    header.topbar nav { gap: 6px; }
+    header.topbar nav a {
+      color: var(--ink-soft); font-weight: 500;
+      padding: 7px 12px; border-radius: var(--radius-sm);
+      transition: background 0.16s var(--ease), color 0.16s var(--ease);
+    }
+    header.topbar nav a:hover { background: var(--surface-2); color: var(--ink); text-decoration: none; }
+
+    /* ---- Layout ---- */
+    .container { max-width: 940px; margin: 0 auto; padding: clamp(20px, 4vw, 36px) clamp(16px, 5vw, 28px) 64px; }
     .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-    .grow { flex: 1; min-width: 120px; }
-    h1 { font-size: 30px; line-height: 1.2; margin: 0 0 18px; letter-spacing: -.01em; }
-    h2 { font-size: 19px; margin: 0 0 12px; }
-    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-    input, select, button {
-      font: inherit; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line);
-      background: var(--panel-2); color: var(--text);
+    .grow { flex: 1; min-width: 140px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: clamp(18px, 3vw, 24px);
+      margin-bottom: 18px;
+      box-shadow: var(--shadow-sm);
     }
-    button { background: var(--accent); border-color: var(--accent); color: #0b0e17; font-weight: 600; cursor: pointer; }
-    button.secondary { background: var(--panel-2); color: var(--text); }
-    button.danger { background: transparent; color: var(--bad); border-color: var(--bad); }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
-    th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
-    .muted { color: var(--muted); }
-    .price { font-variant-numeric: tabular-nums; font-weight: 600; }
-    .badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-    .badge.below_target, .badge.all_time_low { background: rgba(62,207,142,.15); color: var(--good); }
-    .badge.great { background: rgba(108,140,255,.15); color: var(--accent); }
-    .badge.fair { background: rgba(246,193,119,.15); color: var(--warn); }
-    .badge.no_data { background: var(--panel-2); color: var(--muted); }
-    .error { color: var(--bad); font-size: 13px; margin: 8px 0 0; }
-    .empty { color: var(--muted); padding: 16px 0; }
-    .spark { display: block; }
+
+    /* ---- Typography ---- */
+    h1 { font-size: clamp(26px, 5vw, 32px); line-height: 1.15; margin: 0 0 6px; letter-spacing: -0.02em; font-weight: 700; text-wrap: balance; }
+    h2 { font-size: 18px; line-height: 1.3; margin: 0 0 14px; letter-spacing: -0.01em; font-weight: 600; }
+    .lead { color: var(--ink-soft); margin: 0 0 22px; font-size: 15px; }
+    code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.88em; background: var(--surface-2); padding: 1px 6px; border-radius: 6px; color: var(--ink); }
+
+    /* ---- Forms ---- */
+    label { display: block; font-size: 12.5px; font-weight: 500; color: var(--ink-soft); margin-bottom: 6px; }
+    input, select, textarea {
+      font: inherit; width: 100%;
+      padding: 10px 12px; border-radius: var(--radius-sm);
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--ink);
+      transition: border-color 0.16s var(--ease), box-shadow 0.16s var(--ease);
+    }
+    input:hover, select:hover { border-color: var(--ink-soft); }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-ring);
+    }
+    input[type="number"] { font-variant-numeric: tabular-nums; }
+
+    /* ---- Buttons ---- */
+    button, .btn {
+      font: inherit; font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      padding: 10px 16px; border-radius: var(--radius-sm);
+      border: 1px solid var(--accent);
+      background: var(--accent); color: oklch(1 0 0);
+      transition: background 0.16s var(--ease), border-color 0.16s var(--ease), transform 0.08s var(--ease), box-shadow 0.16s var(--ease);
+      white-space: nowrap;
+    }
+    button:hover, .btn:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+    button:active, .btn:active { transform: translateY(1px); }
+    button:focus-visible, .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-ring); }
+    button:disabled, button[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    button.secondary, .btn.secondary {
+      background: var(--surface); color: var(--ink); border-color: var(--line);
+    }
+    button.secondary:hover, .btn.secondary:hover { background: var(--surface-2); border-color: var(--ink-soft); }
+
+    button.danger, .btn.danger {
+      background: transparent; color: var(--bad); border-color: transparent;
+      padding: 7px 11px; font-weight: 500;
+    }
+    button.danger:hover, .btn.danger:hover { background: var(--bad-tint); border-color: transparent; }
+
+    button.buy, .btn.buy {
+      background: var(--good); border-color: var(--good); color: oklch(1 0 0);
+    }
+    button.buy:hover, .btn.buy:hover { filter: brightness(0.94); }
+
+    /* ---- Tables ---- */
+    .table-wrap { overflow-x: auto; margin: 0 -4px; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; min-width: 480px; }
+    th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line-soft); }
+    tr:last-child td { border-bottom: none; }
+    thead th {
+      color: var(--ink-soft); font-weight: 600; font-size: 11.5px;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--line);
+    }
+    tbody tr { transition: background 0.14s var(--ease); }
+    tbody tr:hover { background: var(--surface-2); }
+    tr.is-best { background: var(--good-tint); }
+    tr.is-best:hover { background: var(--good-tint); filter: brightness(0.985); }
+
+    .muted { color: var(--ink-soft); }
+    .price { font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: -0.01em; }
+
+    /* ---- Badges (verdicts / states) — text + color, never color alone ---- */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: var(--radius-pill);
+      font-size: 12px; font-weight: 600; line-height: 1.5;
+      white-space: nowrap;
+    }
+    .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+    .badge.below_target, .badge.all_time_low { background: var(--good-tint); color: var(--good); }
+    .badge.great { background: var(--accent-tint); color: var(--accent-ink); }
+    .badge.fair { background: var(--warn-tint); color: var(--warn); }
+    .badge.no_data, .badge.paused { background: var(--surface-3); color: var(--ink-soft); }
+    .badge.active { background: var(--good-tint); color: var(--good); }
+
+    /* ---- Verdict hero (best deal) ---- */
+    .verdict {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 18px;
+      padding: 18px 20px; border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+    }
+    .verdict.good { background: var(--good-tint); border-color: oklch(0.55 0.130 158 / 0.25); }
+    .verdict.fair { background: var(--warn-tint); border-color: oklch(0.52 0.105 75 / 0.25); }
+    .verdict.none { background: var(--surface-2); }
+    .verdict .v-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); margin-bottom: 2px; }
+    .verdict .v-price { font-size: clamp(28px, 6vw, 34px); font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .verdict .v-price .ccy { font-size: 0.5em; font-weight: 600; color: var(--ink-soft); margin-left: 4px; }
+    .verdict .v-meta { color: var(--ink-soft); font-size: 13px; margin-top: 4px; }
+    .verdict .v-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+    .verdict .v-headline { font-size: 15px; font-weight: 600; color: var(--ink); }
+
+    /* ---- States ---- */
+    .error { color: var(--bad); font-size: 13px; margin: 10px 0 0; font-weight: 500; }
+    .empty {
+      color: var(--ink-soft); padding: 28px 20px; text-align: center;
+      border: 1px dashed var(--line); border-radius: var(--radius); background: var(--surface-2);
+    }
+    .empty strong { color: var(--ink); display: block; margin-bottom: 4px; font-weight: 600; }
+    .spark { display: block; width: 100%; height: auto; border-radius: var(--radius-sm); }
+
+    .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+    .section-head h2 { margin: 0; }
+    .hint { color: var(--ink-soft); font-size: 13px; margin: 6px 0 0; }
+    .auth-card { max-width: 420px; margin: clamp(28px, 8vh, 64px) auto; }
+    .stack > * + * { margin-top: 14px; }
+
+    /* ---- htmx feedback ---- */
+    .htmx-indicator { opacity: 0; transition: opacity 0.2s var(--ease); }
+    .htmx-request .htmx-indicator { opacity: 1; }
+    .htmx-request.htmx-indicator { opacity: 1; }
+    [hx-trigger~="every"].htmx-request { box-shadow: inset 0 2px 0 -1px var(--accent-ring); }
+    .htmx-settling tr.is-best, .htmx-added { animation: flash 0.6s var(--ease); }
+    @keyframes flash { from { background: var(--accent-tint); } }
+
+    @media (max-width: 560px) {
+      .verdict .v-right { align-items: flex-start; text-align: left; width: 100%; }
+      .verdict { padding: 16px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+    }
   </style>
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">🛒 Deal Hunter</div>
+    <a href="/app" class="brand"><span class="logo" aria-hidden="true">🛍️</span> Deal&nbsp;Hunter</a>
     <nav class="row">
       {% if user %}
         <a href="/app">Wishlist</a>
+        <a href="/app/ops">Ops</a>
         <form method="post" action="/logout" style="margin:0">
           <button class="secondary" type="submit">Log out</button>
         </form>
       {% else %}
         <a href="/login">Log in</a>
-        <a href="/register">Register</a>
+        <a href="/register" class="btn" style="padding:7px 14px;">Register</a>
       {% endif %}
     </nav>
   </header>

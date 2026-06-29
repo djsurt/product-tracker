@@ -81,6 +81,24 @@ def test_add_item_returns_fragment_then_appears(client):
     assert "Sony WH-1000XM5" in client.get("/app").text
 
 
+def test_add_item_enqueues_immediate_refresh(client, monkeypatch):
+    _register(client)
+    queued = []
+
+    def fake_apply_async(args, ignore_result=True, retry=False):
+        queued.append(args[0])
+
+    monkeypatch.setattr("workers.tasks.refresh_product.apply_async", fake_apply_async)
+
+    resp = client.post(
+        "/app/items",
+        data={"title": "Sony WH-1000XM5", "query": "sony wh-1000xm5"},
+    )
+
+    assert resp.status_code == 200
+    assert len(queued) == 1
+
+
 def test_item_detail_and_offers_partial(client):
     _register(client)
     client.post("/app/items", data={"title": "Thing", "query": "thing"})
@@ -111,3 +129,68 @@ def test_cannot_open_another_users_item(client):
     _register(client, email="intruder@example.com")
     resp = client.get(f"/app/items/{item_id}")
     assert resp.status_code == 404
+
+
+def test_ops_dashboard_requires_login(client):
+    resp = client.get("/app/ops", follow_redirects=False)
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/login"
+
+
+def test_ops_dashboard_shows_pipeline_visibility(client):
+    _register(client)
+    client.post(
+        "/app/items",
+        data={"title": "Sony WH-1000XM5", "query": "sony wh-1000xm5"},
+    )
+
+    resp = client.get("/app/ops")
+
+    assert resp.status_code == 200
+    assert "Pipeline dashboard" in resp.text
+    assert "Active sources" in resp.text
+    assert "Refresh cadence" in resp.text
+    assert "Tracked items" in resp.text
+    assert "Sony WH-1000XM5" in resp.text
+    assert "deal_fetch_success_total" in resp.text
+    assert "Recent offers" in resp.text
+    assert "Dead letters" in resp.text
+    assert 'hx-trigger="every 5s"' in resp.text
+
+
+def test_seed_demo_items_adds_mock_store_friendly_queries(client, monkeypatch):
+    _register(client)
+    queued = []
+
+    def fake_apply_async(args, ignore_result=True, retry=False):
+        queued.append(args[0])
+
+    monkeypatch.setattr("workers.tasks.refresh_product.apply_async", fake_apply_async)
+
+    resp = client.post("/app/ops/seed-demo", follow_redirects=False)
+
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/app/ops"
+    dash = client.get("/app").text
+    assert "Sony WH-1000XM5" in dash
+    assert "Nintendo Switch OLED" in dash
+    assert "Instant Pot Duo" in dash
+    assert len(queued) == 3
+
+
+def test_refresh_all_enqueues_each_active_item(client, monkeypatch):
+    _register(client)
+    client.post("/app/items", data={"title": "Thing One", "query": "thing one"})
+    client.post("/app/items", data={"title": "Thing Two", "query": "thing two"})
+    queued = []
+
+    def fake_apply_async(args, ignore_result=True, retry=False):
+        queued.append(args[0])
+
+    monkeypatch.setattr("workers.tasks.refresh_product.apply_async", fake_apply_async)
+
+    resp = client.post("/app/ops/refresh-all", follow_redirects=False)
+
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/app/ops"
+    assert len(queued) == 2

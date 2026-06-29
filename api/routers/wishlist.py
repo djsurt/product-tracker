@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api.deps import get_current_user
+from api.jobs import enqueue_product_refresh
 from api.schemas import (
     AlertCreate,
     AlertOut,
@@ -71,6 +72,7 @@ def create_item(
     db.add(item)
     db.commit()
     db.refresh(item)
+    enqueue_product_refresh(item.id)
     return item
 
 

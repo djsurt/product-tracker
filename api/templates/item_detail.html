@@ -1,45 +1,48 @@
 {% extends "base.html" %}
 {% block title %}{{ item.title }} · Deal Hunter{% endblock %}
 {% block content %}
-<p class="muted"><a href="/app">← Wishlist</a></p>
+<p style="margin:0 0 10px;"><a href="/app">← Back to wishlist</a></p>
 <h1>{{ item.title }}</h1>
-<p class="muted">Query: <code>{{ item.query }}</code>
-  {% if item.target_price is not none %}· Target ${{ item.target_price }}{% endif %}</p>
+<p class="lead">Query: <code>{{ item.query }}</code>{% if item.target_price is not none %} · Target <span class="price">${{ item.target_price }}</span>{% endif %}</p>
 
 <div class="card">
-  <div class="row" style="justify-content:space-between;">
-    <h2 style="margin:0;">Live offers</h2>
+  <div class="section-head">
+    <h2>Live offers</h2>
     <button class="secondary"
             hx-post="/app/items/{{ item.id }}/refresh"
-            hx-target="#offers" hx-swap="innerHTML">Refresh now</button>
+            hx-target="#offers" hx-swap="innerHTML">
+      <span class="htmx-indicator" aria-hidden="true">⏳</span>
+      Refresh now</button>
   </div>
-  <p class="muted" style="margin:6px 0 0;font-size:13px;">Auto-refreshes every 5s — watch the prices move.</p>
+  <p class="hint">Auto-refreshes every 5s — watch the prices move.</p>
   <div id="offers"
        hx-get="/app/items/{{ item.id }}/offers"
        hx-trigger="load, every 5s"
-       hx-swap="innerHTML">
+       hx-swap="innerHTML"
+       style="margin-top:14px;">
     <div class="empty">Loading offers…</div>
   </div>
 </div>
 
 <div class="card">
   <h2>Price alerts</h2>
+  <p class="hint" style="margin-top:-6px;margin-bottom:14px;">Get an email the moment a price hits your number.</p>
   <form hx-post="/app/items/{{ item.id }}/alerts" hx-target="#alerts" hx-swap="innerHTML"
         hx-on::after-request="if(event.detail.successful) this.reset()">
-    <div class="row">
-      <div>
+    <div class="row" style="align-items:flex-end;">
+      <div class="grow">
         <label for="rule">Rule</label>
         <select id="rule" name="rule">
           <option value="below_target">Below target / threshold</option>
           <option value="pct_drop">Percent drop</option>
         </select>
       </div>
-      <div>
+      <div style="flex:0 0 150px;">
         <label for="threshold">Threshold</label>
-        <input style="width:140px" id="threshold" name="threshold" type="number" step="0.01" min="0"
+        <input id="threshold" name="threshold" type="number" step="0.01" min="0"
                placeholder="price or %">
       </div>
-      <div style="align-self:flex-end;"><button type="submit">Add alert</button></div>
+      <div><button type="submit">Add alert</button></div>
     </div>
   </form>
   <div id="alerts" style="margin-top:14px;">

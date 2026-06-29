@@ -18,6 +18,9 @@ from sqlalchemy.orm import Session
 
 from core.models import DeadLetter, Offer, PricePoint, TrackedProduct
 from sources.base import NormalizedOffer, PriceSource
+from core.logging import get_logger
+
+log = get_logger(__name__)
 
 
 def discover_offers(
@@ -30,7 +33,18 @@ def discover_offers(
     first to keep it portable across Postgres/SQLite).
     """
     for source in sources:
-        for found in source.search(tracked_product.query):
+        try:
+            found_offers = source.search(tracked_product.query)
+        except Exception as exc:  # noqa: BLE001 - one bad source must not block all
+            log.warning(
+                "discover_offers.source_failed",
+                source=source.name,
+                tracked_product_id=str(tracked_product.id),
+                error=repr(exc),
+            )
+            continue
+
+        for found in found_offers:
             offer = db.scalar(
                 select(Offer).where(
                     Offer.tracked_product_id == tracked_product.id,

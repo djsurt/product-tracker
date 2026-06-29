@@ -1,32 +1,46 @@
-<div class="row" style="justify-content:space-between;align-items:flex-end;margin:14px 0;">
+{% set verdict_copy = {
+  "all_time_low": ("good", "Lowest price we've ever tracked"),
+  "below_target": ("good", "Below your target — good time to buy"),
+  "great":        ("good", "Great price right now"),
+  "fair":         ("fair", "Fair price — it could still drop"),
+  "no_data":      ("none", "Gathering prices…")
+} %}
+{% set vclass, vheadline = verdict_copy.get(deal.verdict, ("none", deal.verdict | replace("_", " "))) %}
+
+<div class="verdict {{ vclass }}">
   <div>
-    <div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.4px;">Best deal</div>
+    <div class="v-label">Best deal</div>
     {% if deal.best_price is not none %}
-      <div class="price" style="font-size:26px;">${{ deal.best_price }} <span class="muted" style="font-size:14px;">{{ deal.currency }}</span></div>
+      <div class="v-price price">${{ deal.best_price }}<span class="ccy">{{ deal.currency }}</span></div>
     {% else %}
-      <div class="muted">No priced offers yet</div>
+      <div class="v-price price muted">—</div>
+    {% endif %}
+    <div class="v-headline">{{ vheadline }}</div>
+    {% if deal.lowest_in_window is not none %}
+      <div class="v-meta">Lowest in {{ deal.window_days }} days: <span class="price">${{ deal.lowest_in_window }}</span></div>
     {% endif %}
   </div>
-  <div style="text-align:right;">
+  <div class="v-right">
     <span class="badge {{ deal.verdict }}">{{ deal.verdict | replace("_", " ") }}</span>
-    {% if deal.lowest_in_window is not none %}
-      <div class="muted" style="font-size:12px;margin-top:4px;">Low in {{ deal.window_days }}d: ${{ deal.lowest_in_window }}</div>
+    {% if deal.best_offer_id %}
+      <a class="btn buy" href="/go/{{ deal.best_offer_id }}" target="_blank" rel="noopener">Buy now →</a>
     {% endif %}
   </div>
 </div>
 
-{% if spark %}<div style="margin-bottom:12px;">{{ spark | safe }}</div>{% endif %}
+{% if spark %}<div style="margin:16px 0 4px;">{{ spark | safe }}</div>{% endif %}
 
 {% if offers %}
+<div class="table-wrap" style="margin-top:14px;">
 <table>
   <thead><tr><th>Source</th><th>Title</th><th>Price</th><th>Stock</th><th></th></tr></thead>
   <tbody>
     {% for o in offers %}
-    <tr {% if deal.best_offer_id and o.id == deal.best_offer_id %}style="background:rgba(62,207,142,.06);"{% endif %}>
+    <tr {% if deal.best_offer_id and o.id == deal.best_offer_id %}class="is-best"{% endif %}>
       <td>{{ o.source }}</td>
       <td class="muted">{{ o.title }}</td>
       <td class="price">{% if o.last_price is not none %}${{ o.last_price }}{% else %}—{% endif %}</td>
-      <td>{% if o.is_available %}<span class="badge great">in stock</span>{% else %}<span class="badge no_data">stale</span>{% endif %}</td>
+      <td>{% if o.is_available %}<span class="badge active">in stock</span>{% else %}<span class="badge no_data">stale</span>{% endif %}</td>
       <td style="text-align:right;">
         {% if o.url %}<a href="/go/{{ o.id }}" target="_blank" rel="noopener">Buy →</a>{% endif %}
       </td>
@@ -34,6 +48,10 @@
     {% endfor %}
   </tbody>
 </table>
+</div>
 {% else %}
-<div class="empty">No offers discovered yet. Hit “Refresh now” and give the workers a moment.</div>
+<div class="empty" style="margin-top:14px;">
+  <strong>No offers discovered yet</strong>
+  Hit “Refresh now” and give the workers a moment to fetch prices.
+</div>
 {% endif %}

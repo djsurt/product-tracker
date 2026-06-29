@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Pipeline dashboard · Deal Hunter{% endblock %}
+{% block content %}
+<div id="ops-dashboard"
+     hx-get="/app/ops"
+     hx-trigger="every 5s"
+     hx-select="#ops-dashboard"
+     hx-target="#ops-dashboard"
+     hx-swap="outerHTML">
+<div class="section-head">
+  <div>
+    <h1>Pipeline dashboard</h1>
+    <p class="lead">A live view of what the workers are discovering, fetching, and retrying.</p>
+  </div>
+  <div class="row">
+    <form method="post" action="/app/ops/seed-demo" style="margin:0">
+      <button class="secondary" type="submit">Seed demo items</button>
+    </form>
+    <form method="post" action="/app/ops/refresh-all" style="margin:0">
+      <button type="submit">Refresh all now</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="row" style="align-items:stretch;">
+    <div class="grow">
+      <div class="hint">Active sources</div>
+      <div style="margin-top:8px;">
+        {% for source in active_sources %}
+          <span class="badge active">{{ source }}</span>
+        {% else %}
+          <span class="badge no_data">none</span>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="grow">
+      <div class="hint">Refresh cadence</div>
+      <div class="price" style="font-size:24px;margin-top:4px;">{{ refresh_interval_seconds }}s</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Current state</h2>
+  <div class="row" style="align-items:stretch;">
+    <div class="grow"><div class="hint">Tracked items</div><div class="price" style="font-size:28px;">{{ stats.tracked_items }}</div></div>
+    <div class="grow"><div class="hint">Active items</div><div class="price" style="font-size:28px;">{{ stats.active_items }}</div></div>
+    <div class="grow"><div class="hint">Offers</div><div class="price" style="font-size:28px;">{{ stats.offers }}</div></div>
+    <div class="grow"><div class="hint">Price points</div><div class="price" style="font-size:28px;">{{ stats.price_points }}</div></div>
+    <div class="grow"><div class="hint">Dead letters</div><div class="price" style="font-size:28px;">{{ stats.dead_letters }}</div></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Tracked items</h2>
+  {% if items %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Product</th><th>Query</th><th>Target</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td><a href="/app/items/{{ item.id }}">{{ item.title }}</a></td>
+          <td class="muted">{{ item.query }}</td>
+          <td class="price">{% if item.target_price is not none %}${{ item.target_price }}{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td>{% if item.is_active %}<span class="badge active">active</span>{% else %}<span class="badge paused">paused</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><strong>No tracked items yet</strong>Seed demo items or add one from the wishlist.</div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Worker counters</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Metric</th><th>Count</th></tr></thead>
+      <tbody>
+        {% for name, value in metric_values.items() %}
+        <tr><td><code>{{ name }}</code></td><td class="price">{{ value }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Recent offers</h2>
+  {% if recent_offers %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Source</th><th>Title</th><th>Price</th><th>Last seen</th><th>State</th></tr></thead>
+      <tbody>
+        {% for offer in recent_offers %}
+        <tr>
+          <td>{{ offer.source }}</td>
+          <td class="muted">{{ offer.title }}</td>
+          <td class="price">{% if offer.last_price is not none %}${{ offer.last_price }}{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td class="muted">{% if offer.last_seen_at %}{{ offer.last_seen_at }}{% else %}not fetched{% endif %}</td>
+          <td>{% if offer.is_available %}<span class="badge active">available</span>{% else %}<span class="badge no_data">stale</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><strong>No offers discovered yet</strong>Use Refresh all now, then wait a few seconds for workers to write prices.</div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Dead letters</h2>
+  {% if dead_letters %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Task</th><th>Retries</th><th>Error</th><th>Created</th></tr></thead>
+      <tbody>
+        {% for letter in dead_letters %}
+        <tr>
+          <td>{{ letter.task_name }}</td>
+          <td class="price">{{ letter.retries }}</td>
+          <td class="muted">{{ letter.error }}</td>
+          <td class="muted">{{ letter.created_at }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><strong>No dead letters</strong>Permanent task failures will show up here.</div>
+  {% endif %}
+</div>
+</div>
+{% endblock %}

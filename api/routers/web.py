@@ -19,19 +19,28 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from api.deps import SESSION_COOKIE, get_optional_web_user, require_web_user
+from api.jobs import enqueue_product_refresh
+from core import metrics
 from core.db import get_db
-from core.models import Alert, Offer, PricePoint, TrackedProduct, User
+from core.models import Alert, DeadLetter, Offer, PricePoint, TrackedProduct, User
 from core.security import create_access_token, hash_password, verify_password
 from core.settings import get_settings
+from sources.registry import active_source_names
 
 router = APIRouter(tags=["web"])
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
 settings = get_settings()
+
+DEMO_ITEMS = [
+    ("Sony WH-1000XM5", "sony wh-1000xm5", Decimal("299.99")),
+    ("Nintendo Switch OLED", "nintendo switch oled", Decimal("299.99")),
+    ("Instant Pot Duo", "instant pot duo", Decimal("79.99")),
+]
 
 
 # --- helpers ---------------------------------------------------------------
@@ -58,7 +67,7 @@ def _owned(item_id: uuid.UUID, user: User, db: Session) -> TrackedProduct:
     return item
 
 
-def _sparkline(prices: list[Decimal], w: int = 280, h: int = 40) -> str | None:
+def _sparkline(prices: list[Decimal], w: int = 560, h: int = 60) -> str | None:
     """Render a tiny inline SVG price trend — no JS charting lib needed.
 
     Server-side SVG keeps the all-Python promise and means the chart arrives with
@@ -71,15 +80,27 @@ def _sparkline(prices: list[Decimal], w: int = 280, h: int = 40) -> str | None:
     lo, hi = min(pts), max(pts)
     span = (hi - lo) or 1.0
     step = w / (len(pts) - 1)
-    coords = " ".join(
-        f"{i * step:.1f},{h - (v - lo) / span * (h - 4) - 2:.1f}"
+    xy = [
+        (i * step, h - (v - lo) / span * (h - 6) - 3)
         for i, v in enumerate(pts)
-    )
-    color = "#3ecf8e" if pts[-1] <= pts[0] else "#ff6b6b"  # down = good
+    ]
+    coords = " ".join(f"{x:.1f},{y:.1f}" for x, y in xy)
+    # down (cheaper) is good; align with the theme's semantic green / red
+    color = "#1f9d63" if pts[-1] <= pts[0] else "#cf4436"  # down = good
+    fill_id = f"sparkfill{id(prices) & 0xffff}"
+    area = f"0,{h:.0f} {coords} {xy[-1][0]:.1f},{h:.0f}"
+    ex, ey = xy[-1]
     return (
-        f'<svg class="spark" width="{w}" height="{h}" viewBox="0 0 {w} {h}">'
+        f'<svg class="spark" width="100%" viewBox="0 0 {w} {h}" '
+        f'role="img" aria-label="Price trend">'
+        f'<defs><linearGradient id="{fill_id}" x1="0" y1="0" x2="0" y2="1">'
+        f'<stop offset="0" stop-color="{color}" stop-opacity="0.16"/>'
+        f'<stop offset="1" stop-color="{color}" stop-opacity="0"/>'
+        f'</linearGradient></defs>'
+        f'<polygon fill="url(#{fill_id})" points="{area}"/>'
         f'<polyline fill="none" stroke="{color}" stroke-width="2" '
-        f'stroke-linejoin="round" points="{coords}"/></svg>'
+        f'stroke-linejoin="round" stroke-linecap="round" points="{coords}"/>'
+        f'<circle cx="{ex:.1f}" cy="{ey:.1f}" r="3" fill="{color}"/></svg>'
     )
 
 
@@ -137,6 +158,64 @@ def _parse_decimal(raw: str | None) -> Decimal | None:
         return Decimal(raw)
     except InvalidOperation:
         return None
+
+
+def _count(db: Session, stmt) -> int:
+    return int(db.scalar(stmt) or 0)
+
+
+def _ops_context(request: Request, user: User, db: Session) -> dict:
+    items = list(
+        db.scalars(
+            select(TrackedProduct)
+            .where(TrackedProduct.user_id == user.id)
+            .order_by(TrackedProduct.created_at.desc())
+        )
+    )
+    item_ids = [item.id for item in items]
+    if item_ids:
+        offers_stmt = select(func.count(Offer.id)).where(
+            Offer.tracked_product_id.in_(item_ids)
+        )
+        price_points_stmt = (
+            select(func.count(PricePoint.id))
+            .join(Offer, Offer.id == PricePoint.offer_id)
+            .where(Offer.tracked_product_id.in_(item_ids))
+        )
+        recent_offers = list(
+            db.scalars(
+                select(Offer)
+                .where(Offer.tracked_product_id.in_(item_ids))
+                .order_by(Offer.last_seen_at.desc(), Offer.created_at.desc())
+                .limit(12)
+            )
+        )
+    else:
+        offers_stmt = select(func.count(Offer.id)).where(False)
+        price_points_stmt = select(func.count(PricePoint.id)).where(False)
+        recent_offers = []
+
+    dead_letters = list(
+        db.scalars(select(DeadLetter).order_by(DeadLetter.created_at.desc()).limit(8))
+    )
+    dead_letter_count = _count(db, select(func.count(DeadLetter.id)))
+    return {
+        "request": request,
+        "user": user,
+        "items": items,
+        "recent_offers": recent_offers,
+        "dead_letters": dead_letters,
+        "active_sources": active_source_names(),
+        "refresh_interval_seconds": settings.refresh_interval_seconds,
+        "stats": {
+            "tracked_items": len(items),
+            "active_items": sum(1 for item in items if item.is_active),
+            "offers": _count(db, offers_stmt),
+            "price_points": _count(db, price_points_stmt),
+            "dead_letters": dead_letter_count,
+        },
+        "metric_values": metrics.snapshot(),
+    }
 
 
 # --- auth pages ------------------------------------------------------------
@@ -226,6 +305,61 @@ def dashboard(
     )
 
 
+@router.get("/app/ops", response_class=HTMLResponse)
+def ops_dashboard(
+    request: Request,
+    user: User = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    return templates.TemplateResponse(
+        request, "ops_dashboard.html", _ops_context(request, user, db)
+    )
+
+
+@router.post("/app/ops/seed-demo")
+def seed_demo_items(
+    user: User = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    existing_queries = set(
+        db.scalars(select(TrackedProduct.query).where(TrackedProduct.user_id == user.id))
+    )
+    created_items: list[TrackedProduct] = []
+    for title, query, target in DEMO_ITEMS:
+        if query in existing_queries:
+            continue
+        item = TrackedProduct(
+            user_id=user.id,
+            title=title,
+            query=query,
+            target_price=target,
+        )
+        db.add(item)
+        created_items.append(item)
+    db.commit()
+    for item in created_items:
+        enqueue_product_refresh(item.id)
+    return RedirectResponse("/app/ops", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/app/ops/refresh-all")
+def refresh_all_items(
+    user: User = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    item_ids = list(
+        db.scalars(
+            select(TrackedProduct.id).where(
+                TrackedProduct.user_id == user.id,
+                TrackedProduct.is_active.is_(True),
+            )
+        )
+    )
+    for item_id in item_ids:
+        enqueue_product_refresh(item_id)
+    return RedirectResponse("/app/ops", status_code=status.HTTP_303_SEE_OTHER)
+
+
 @router.post("/app/items", response_class=HTMLResponse)
 def create_item(
     request: Request,
@@ -235,15 +369,16 @@ def create_item(
     user: User = Depends(require_web_user),
     db: Session = Depends(get_db),
 ):
-    db.add(
-        TrackedProduct(
-            user_id=user.id,
-            title=title.strip(),
-            query=query.strip(),
-            target_price=_parse_decimal(target_price),
-        )
+    item = TrackedProduct(
+        user_id=user.id,
+        title=title.strip(),
+        query=query.strip(),
+        target_price=_parse_decimal(target_price),
     )
+    db.add(item)
     db.commit()
+    db.refresh(item)
+    enqueue_product_refresh(item.id)
     items = list(
         db.scalars(
             select(TrackedProduct)

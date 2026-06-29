@@ -51,6 +51,16 @@ class FakeSource:
         )
 
 
+class BrokenSource:
+    name = "broken"
+
+    def search(self, query):
+        raise TimeoutError("source timed out")
+
+    def fetch(self, source_product_id):
+        raise TimeoutError("source timed out")
+
+
 @pytest.fixture
 def db():
     engine = create_engine(
@@ -84,6 +94,14 @@ def test_discover_is_idempotent(db, tracked_product):
     discover_offers(db, tracked_product, [FakeSource()])  # run again
     count = db.scalar(select(func.count()).select_from(Offer))
     assert count == 1  # no duplicate despite running twice
+
+
+def test_discover_continues_when_one_source_fails(db, tracked_product):
+    offers = discover_offers(db, tracked_product, [FakeSource(), BrokenSource()])
+
+    assert len(offers) == 1
+    assert offers[0].source == "fake"
+    assert db.scalar(select(func.count()).select_from(Offer)) == 1
 
 
 def test_record_price_updates_snapshot_and_appends_history(db, tracked_product):

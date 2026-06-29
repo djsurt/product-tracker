@@ -54,3 +54,12 @@ def auth_headers(client):
     )
     token = resp.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture(autouse=True)
+def no_real_celery_enqueue(monkeypatch):
+    """Keep route tests from opening a real Redis broker connection."""
+    monkeypatch.setattr(
+        "workers.tasks.refresh_product.apply_async",
+        lambda *args, **kwargs: None,
+    )

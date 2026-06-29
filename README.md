@@ -139,6 +139,18 @@ Enable it with `SCRAPER_ENABLED=true`; it then appears in `active_sources`
 alongside `mock` and every wishlist item gains scraped offers too. (For a
 JS-rendered site you'd swap the fetch for Playwright behind the same interface.)
 
+**Personal marketplace scrapers.** If you don't have marketplace API keys, you
+can opt into best-effort eBay and SHEIN HTML scrapers:
+
+```bash
+EBAY_SCRAPER_ENABLED=true
+SHEIN_SCRAPER_ENABLED=true
+```
+
+They appear as `ebay_scraper` and `shein_scraper`. They use public HTML pages,
+parse only the fields needed for price tracking, and are intentionally disabled
+by default because live marketplace markup and anti-bot behavior can change.
+
 **Dead-letter queue.** When `fetch_offer` (or `notify`) exhausts its retries, it
 doesn't fail forever or vanish — it parks a row in `dead_letters` and marks the
 offer stale (`is_available=false`) so its bad price isn't trusted. Inspect with:

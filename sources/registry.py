@@ -10,9 +10,11 @@ from core.settings import get_settings
 from sources.base import PriceSource
 from sources.bestbuy import BestBuySource
 from sources.ebay import EbaySource
+from sources.ebay_scraper import EbayScraperSource
 from sources.mock import MockStoreSource
 from sources.rapidapi import RapidApiProductSource
 from sources.scraper import ScraperSource
+from sources.shein_scraper import SheinScraperSource
 
 
 def _build_registry() -> dict[str, PriceSource]:
@@ -27,6 +29,10 @@ def _build_registry() -> dict[str, PriceSource]:
         sources.append(RapidApiProductSource())
     if s.scraper_enabled:
         sources.append(ScraperSource())
+    if s.ebay_scraper_enabled:
+        sources.append(EbayScraperSource())
+    if s.shein_scraper_enabled:
+        sources.append(SheinScraperSource())
 
     return {src.name: src for src in sources}
 

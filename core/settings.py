@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     # scrapes HTML, defaulting to our own mock store's /html pages.
     scraper_enabled: bool = False
     scraper_base_url: str | None = None  # falls back to mock_store_url
+    ebay_scraper_enabled: bool = False
+    ebay_scraper_base_url: str = "https://www.ebay.com"
+    shein_scraper_enabled: bool = False
+    shein_scraper_base_url: str = "https://us.shein.com"
 
     # --- Reliability + caching (Phase 3) ---
     # Max calls/sec we allow ourselves to make to each source (rate limiting).

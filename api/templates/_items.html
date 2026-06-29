@@ -1,5 +1,6 @@
 {% if items %}
 <div class="card">
+  <div class="table-wrap">
   <table>
     <thead>
       <tr><th>Product</th><th>Query</th><th>Target</th><th>Status</th><th></th></tr>
@@ -10,7 +11,7 @@
         <td><a href="/app/items/{{ item.id }}">{{ item.title }}</a></td>
         <td class="muted">{{ item.query }}</td>
         <td class="price">{% if item.target_price is not none %}${{ item.target_price }}{% else %}<span class="muted">—</span>{% endif %}</td>
-        <td>{% if item.is_active %}<span class="badge great">active</span>{% else %}<span class="badge no_data">paused</span>{% endif %}</td>
+        <td>{% if item.is_active %}<span class="badge active">active</span>{% else %}<span class="badge paused">paused</span>{% endif %}</td>
         <td style="text-align:right;">
           <button class="danger"
                   hx-delete="/app/items/{{ item.id }}"
@@ -21,7 +22,11 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 {% else %}
-<div class="card empty">No items yet — add a product above to start tracking its price.</div>
+<div class="empty">
+  <strong>Your wishlist is empty</strong>
+  Add a product above and we’ll start watching its price across stores.
+</div>
 {% endif %}

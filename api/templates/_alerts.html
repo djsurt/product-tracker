@@ -1,4 +1,5 @@
 {% if alerts %}
+<div class="table-wrap">
 <table>
   <thead><tr><th>Rule</th><th>Threshold</th><th>Last fired</th><th></th></tr></thead>
   <tbody>
@@ -20,6 +21,10 @@
     {% endfor %}
   </tbody>
 </table>
+</div>
 {% else %}
-<div class="empty">No alerts yet. Add one above to get emailed when the price drops.</div>
+<div class="empty">
+  <strong>No alerts yet</strong>
+  Add one above and we’ll email you the moment the price drops.
+</div>
 {% endif %}

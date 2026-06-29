@@ -65,6 +65,24 @@ def test_wishlist_crud(client, auth_headers):
     assert client.get(f"/wishlist/{item_id}", headers=auth_headers).status_code == 404
 
 
+def test_wishlist_create_enqueues_immediate_refresh(client, auth_headers, monkeypatch):
+    queued = []
+
+    def fake_apply_async(args, ignore_result=True, retry=False):
+        queued.append(args[0])
+
+    monkeypatch.setattr("workers.tasks.refresh_product.apply_async", fake_apply_async)
+
+    r = client.post(
+        "/wishlist",
+        headers=auth_headers,
+        json={"title": "Sony WH-1000XM5", "query": "sony wh-1000xm5"},
+    )
+
+    assert r.status_code == 201
+    assert queued == [r.json()["id"]]
+
+
 def test_ownership_isolation(client, auth_headers):
     """A second user must not see or touch the first user's items."""
     # alice (from auth_headers) creates an item
