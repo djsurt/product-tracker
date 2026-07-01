@@ -10,6 +10,7 @@ from decimal import Decimal
 import httpx
 import pytest
 
+from sources._http import SourceBlockedError
 from sources.ebay_scraper import EbayScraperSource
 from sources.shein_scraper import SheinScraperSource
 
@@ -26,6 +27,22 @@ class FakeClient:
         if html is None:
             raise AssertionError(f"unexpected URL: {url}")
         return httpx.Response(200, text=html, request=httpx.Request("GET", url))
+
+
+class RiskRedirectClient:
+    """Simulates SHEIN's anti-bot soft block: the requested URL 302-redirects to
+    a ``/risk/action/limit`` captcha interstitial that itself returns HTTP 200.
+    After following redirects, the response's final URL is the risk page."""
+
+    def __init__(self) -> None:
+        self.risk_url = "https://us.shein.com/risk/action/limit?risk-id=E123"
+
+    def get(self, url: str, params: dict | None = None, headers: dict | None = None):
+        return httpx.Response(
+            200,
+            text="<html><body>captcha verify you are not a robot</body></html>",
+            request=httpx.Request("GET", self.risk_url),
+        )
 
 
 EBAY_SEARCH_HTML = """
@@ -171,6 +188,29 @@ def test_shein_scraper_fetch_uses_stored_product_path():
     assert offer.currency == "USD"
     assert offer.url == "https://us.shein.com/Men-Solid-Tee-p-17277821-cat-1980.html"
     assert offer.available is True
+
+
+def test_shein_scraper_search_raises_blocked_on_risk_redirect():
+    # SHEIN soft-blocks bots by redirecting to a 200-OK captcha interstitial.
+    # We must fail loudly so the worker's retry/dead-letter path engages, rather
+    # than parsing the captcha page as "no results" and silently returning [].
+    source = SheinScraperSource(
+        base_url="https://us.shein.com",
+        client=RiskRedirectClient(),
+    )
+
+    with pytest.raises(SourceBlockedError):
+        source.search("tee")
+
+
+def test_shein_scraper_fetch_raises_blocked_on_risk_redirect():
+    source = SheinScraperSource(
+        base_url="https://us.shein.com",
+        client=RiskRedirectClient(),
+    )
+
+    with pytest.raises(SourceBlockedError):
+        source.fetch("path:/Men-Solid-Tee-p-17277821-cat-1980.html")
 
 
 def test_shein_scraper_fetch_raises_when_product_has_no_price():
