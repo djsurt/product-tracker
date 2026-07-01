@@ -95,17 +95,25 @@ class RapidApiProductSource:
         return []
 
     def _to_offer(self, product: dict) -> NormalizedOffer | None:
-        offer = product.get("offer") or {}
-        price = _parse_price(offer.get("price"))
+        # Two live shapes: /search carries `price` at the top level, while
+        # /product-details nests price + a concrete retailer URL in an `offers`
+        # list. Prefer the top-level price; fall back to the first offer.
+        price_raw = product.get("price")
+        url = product.get("product_page_url") or ""
+        offers = product.get("offers")
+        if price_raw is None and isinstance(offers, list) and offers:
+            best = offers[0]
+            price_raw = best.get("price")
+            url = best.get("offer_page_url") or url
+        price = _parse_price(price_raw)
         if price is None:
             return None
-        url = offer.get("offer_page_url") or product.get("product_page_url") or ""
         return NormalizedOffer(
             source=self.name,
             source_product_id=str(product.get("product_id", "")),
             title=(product.get("product_title") or "Product")[:_TITLE_MAX],
             price=price,
-            currency=_detect_currency(offer.get("price")),
+            currency=_detect_currency(price_raw),
             url=url[:_URL_MAX],
             available=True,
         )
