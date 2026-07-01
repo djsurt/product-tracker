@@ -1,0 +1,68 @@
+name: deploy
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPO: ${{ vars.ECR_REPOSITORY }}
+          SHA: ${{ github.sha }}
+        run: |
+          docker build -t "$REGISTRY/$REPO:$SHA" -t "$REGISTRY/$REPO:latest" .
+          docker push "$REGISTRY/$REPO:$SHA"
+          docker push "$REGISTRY/$REPO:latest"
+
+      - name: Deploy on EC2 via SSM
+        env:
+          INSTANCE_ID: ${{ vars.INSTANCE_ID }}
+          REGION: ${{ vars.AWS_REGION }}
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          CMD_ID=$(aws ssm send-command \
+            --region "$REGION" \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "deploy ${{ github.sha }}" \
+            --parameters "{\"workingDirectory\":[\"/opt/deal-hunter\"],\"commands\":[\"set -e\",\"aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REGISTRY\",\"docker compose -f docker-compose.prod.yml pull\",\"docker compose -f docker-compose.prod.yml run --rm web alembic upgrade head\",\"docker compose -f docker-compose.prod.yml up -d\"]}" \
+            --query "Command.CommandId" --output text)
+          echo "SSM command: $CMD_ID"
+          aws ssm wait command-executed --region "$REGION" --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" || true
+          STATUS=$(aws ssm get-command-invocation --region "$REGION" --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query Status --output text)
+          echo "Deploy status: $STATUS"
+          test "$STATUS" = "Success"
+
+      - name: Smoke test /health
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          for i in $(seq 1 10); do
+            if curl -fsS "$SITE_URL/health" | grep -q '"status":"ok"'; then echo "healthy"; exit 0; fi
+            sleep 15
+          done
+          echo "health check failed"; exit 1
