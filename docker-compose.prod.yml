@@ -1,0 +1,42 @@
+# Production stack for the EC2 host. Uses the prebuilt ECR image (no build),
+# and drops dev-only services (postgres/redis are managed; mock-store/mailhog
+# are dev tools). Config comes from /opt/deal-hunter/.env rendered at boot.
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - SITE_ADDRESS=${SITE_ADDRESS}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+  web:
+    image: ${ECR_IMAGE}
+    restart: unless-stopped
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000
+    env_file: .env
+    expose:
+      - "8000"
+
+  worker:
+    image: ${ECR_IMAGE}
+    restart: unless-stopped
+    command: celery -A workers.celery_app worker --loglevel=info --concurrency=2
+    env_file: .env
+
+  beat:
+    image: ${ECR_IMAGE}
+    restart: unless-stopped
+    command: celery -A workers.celery_app beat --loglevel=info
+    env_file: .env
+
+volumes:
+  caddy_data:
+  caddy_config:
