@@ -40,6 +40,7 @@ Built one phase at a time — each phase is independently runnable and demo-able
 - **Phase 4 — Notifications + redirect** ✅ alert rules (`below_target`/`pct_drop`), price-drop event → notify worker → email (MailHog), debounce, `/go/{offer_id}` click-logging redirect
 - **Phase 5 — Scraper adapter + reliability hardening** ✅ HTML `ScraperSource` (httpx + BeautifulSoup), dead-letter table on exhausted retries, structured logging (structlog), Prometheus `/metrics`, horizontal worker scaling
 - **Phase 6 — Frontend + cloud deploy** ✅ server-rendered HTMX UI (`/app`) with live-polling prices + SVG price chart, cookie auth, `render.yaml` deploy blueprint
+- **Phase 7 — Add from screenshot** ✅ upload a product screenshot; Claude vision (`claude-haiku-4-5`) identifies it into a prefilled wishlist entry (config-gated by `ANTHROPIC_API_KEY`)
 
 ## Running locally
 

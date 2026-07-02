@@ -16,7 +16,7 @@ import uuid
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 from api.deps import SESSION_COOKIE, get_optional_web_user, require_web_user
 from api.jobs import enqueue_product_refresh
-from core import metrics
+from core import metrics, vision
 from core.db import get_db
 from core.models import Alert, DeadLetter, Offer, PricePoint, TrackedProduct, User
 from core.security import create_access_token, hash_password, verify_password
@@ -387,6 +387,41 @@ def create_item(
         )
     )
     return templates.TemplateResponse(request, "_items.html", {"items": items})
+
+
+@router.post("/app/items/identify", response_class=HTMLResponse)
+def identify_screenshot(
+    request: Request,
+    file: UploadFile = File(...),
+    user: User = Depends(require_web_user),
+):
+    """Screenshot → prefilled add-item form (HTMX fragment).
+
+    Always 200: HTMX only swaps 2xx responses, so errors ride inside the
+    fragment as a message plus an empty manual form.
+    """
+    ident = None
+    error = None
+    if file.content_type not in vision.ALLOWED_IMAGE_TYPES:
+        error = "That file type isn't supported — upload a PNG, JPEG, WebP, or GIF."
+    else:
+        data = file.file.read(vision.MAX_IMAGE_BYTES + 1)
+        if len(data) > vision.MAX_IMAGE_BYTES:
+            error = "Image is over 5 MB — crop or resize it and try again."
+        else:
+            try:
+                ident = vision.identify_product(data, file.content_type)
+            except vision.VisionNotConfigured:
+                error = "Screenshot identification isn't configured on this server."
+            except vision.VisionUnavailable:
+                error = "Identification failed — try again, or add the item manually."
+            else:
+                if not ident.identified:
+                    ident = None
+                    error = "Couldn't spot a product in that image — fill the form manually."
+    return templates.TemplateResponse(
+        request, "_identify_result.html", {"ident": ident, "error": error}
+    )
 
 
 @router.delete("/app/items/{item_id}", response_class=HTMLResponse)
