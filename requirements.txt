@@ -39,3 +39,7 @@ jinja2>=3.1
 pytest>=8.2
 httpx>=0.28
 fakeredis>=2.23   # in-memory Redis for unit tests (cache/ratelimit/lock)
+
+# Screenshot identification (Phase 7): Claude vision turns a product screenshot
+# into a title + search query that feeds the existing text-search pipeline.
+anthropic>=0.92

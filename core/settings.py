@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     rapidapi_product_host: str = "real-time-product-search.p.rapidapi.com"
     rapidapi_country: str = "us"
 
+    # --- Screenshot identification (Phase 7) ---
+    # Claude vision key; the identify endpoints return 503 until it's set.
+    anthropic_api_key: str | None = None
+    anthropic_vision_model: str = "claude-haiku-4-5"
+
     # --- Scraper (Phase 5) ---
     # Off by default; set SCRAPER_ENABLED=true to add it as a live source. It
     # scrapes HTML, defaulting to our own mock store's /html pages.
