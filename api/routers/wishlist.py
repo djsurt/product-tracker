@@ -9,7 +9,7 @@ confirm it exists.
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -27,6 +27,7 @@ from api.schemas import (
     TrackedProductOut,
     TrackedProductUpdate,
 )
+from core import vision
 from core.cache import cache_best_deal, get_cached_best_deal
 from core.db import get_db
 from core.models import Alert, Offer, PricePoint, TrackedProduct, User
@@ -74,6 +75,51 @@ def create_item(
     db.refresh(item)
     enqueue_product_refresh(item.id)
     return item
+
+
+@router.post("/identify", response_model=vision.ProductIdentification)
+def identify_item(
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+) -> vision.ProductIdentification:
+    """Turn an uploaded screenshot into a prefilled wishlist suggestion.
+
+    Read-only: nothing is created here. The client reviews the identification
+    and then POSTs /wishlist as usual — one flow for manual and screenshot adds.
+    """
+    if file.content_type not in vision.ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Upload a PNG, JPEG, WebP, or GIF image",
+        )
+    # Read one byte past the cap: a full read of a huge upload wastes memory,
+    # and we only need to know whether it exceeds the limit.
+    data = file.file.read(vision.MAX_IMAGE_BYTES + 1)
+    if len(data) > vision.MAX_IMAGE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Image exceeds 5 MB — crop or resize it",
+        )
+
+    try:
+        ident = vision.identify_product(data, file.content_type)
+    except vision.VisionNotConfigured:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Screenshot identification is not configured",
+        )
+    except vision.VisionUnavailable:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Identification service failed — try again or add manually",
+        )
+
+    if not ident.identified:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Couldn't identify a product in the image — add it manually",
+        )
+    return ident
 
 
 @router.get("/{item_id}", response_model=TrackedProductOut)
