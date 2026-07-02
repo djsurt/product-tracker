@@ -98,7 +98,8 @@ def _sparkline(prices: list[Decimal], w: int = 560, h: int = 60) -> str | None:
         f'<stop offset="1" stop-color="{color}" stop-opacity="0"/>'
         f'</linearGradient></defs>'
         f'<polygon fill="url(#{fill_id})" points="{area}"/>'
-        f'<polyline fill="none" stroke="{color}" stroke-width="2" '
+        # pathLength=100 lets CSS animate a draw-in with a fixed dasharray
+        f'<polyline fill="none" stroke="{color}" stroke-width="2" pathLength="100" '
         f'stroke-linejoin="round" stroke-linecap="round" points="{coords}"/>'
         f'<circle cx="{ex:.1f}" cy="{ey:.1f}" r="3" fill="{color}"/></svg>'
     )

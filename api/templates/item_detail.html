@@ -14,13 +14,19 @@
       <span class="htmx-indicator" aria-hidden="true">⏳</span>
       Refresh now</button>
   </div>
-  <p class="hint">Auto-refreshes every 5s — watch the prices move.</p>
+  <p class="hint"><span class="live-dot" aria-hidden="true"></span>Live — refreshes every 5s, watch the prices move.</p>
   <div id="offers"
        hx-get="/app/items/{{ item.id }}/offers"
        hx-trigger="load, every 5s"
        hx-swap="innerHTML"
        style="margin-top:14px;">
-    <div class="empty">Loading offers…</div>
+    <div aria-hidden="true">
+      <div class="skel skel-verdict"></div>
+      <div class="skel skel-row"></div>
+      <div class="skel skel-row"></div>
+      <div class="skel skel-row"></div>
+    </div>
+    <span class="muted" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);">Loading offers…</span>
   </div>
 </div>
 

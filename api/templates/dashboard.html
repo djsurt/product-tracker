@@ -28,18 +28,25 @@
       </div>
     </div>
   </form>
-</div>
 
-<div class="card">
-  <h2>Add from screenshot</h2>
-  <p class="muted">Upload a screenshot of a product — we'll identify it and prefill the form.</p>
+  <div class="divider">or add from a screenshot</div>
+
   <form hx-post="/app/items/identify" hx-target="#identify-result" hx-swap="innerHTML"
         hx-encoding="multipart/form-data">
-    <div class="row" style="align-items:flex-end;">
-      <div class="grow">
-        <input type="file" name="file" accept="image/png,image/jpeg,image/webp,image/gif" required>
-      </div>
-      <div>
+    <div class="row" style="align-items:stretch;">
+      <label class="dropzone grow">
+        <input type="file" name="file" accept="image/png,image/jpeg,image/webp,image/gif" required
+               aria-label="Product screenshot">
+        <svg class="dz-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="3"/>
+          <circle cx="9" cy="9" r="2"/>
+          <path d="M21 15l-4.5-4.5L6 21"/>
+        </svg>
+        <img class="dz-thumb" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="">
+        <span class="dz-name">Drop a product screenshot here, or browse</span>
+      </label>
+      <div style="display:flex;align-items:center;">
         <button type="submit">
           <span class="htmx-indicator" aria-hidden="true">⏳</span>
           Identify
