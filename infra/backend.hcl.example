@@ -1,0 +1,7 @@
+# Copy to backend.hcl and fill from bootstrap outputs, then:
+#   terraform init -backend-config=backend.hcl
+bucket         = "deal-hunter-tfstate-REPLACE_ACCOUNT_ID"
+key            = "deal-hunter/prod/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "deal-hunter-tflock"
+encrypt        = true

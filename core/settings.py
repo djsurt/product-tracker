@@ -55,6 +55,13 @@ class Settings(BaseSettings):
     shein_scraper_enabled: bool = False
     shein_scraper_base_url: str = "https://us.shein.com"
 
+    # Per-host politeness for the marketplace HTML scrapers (eBay / SHEIN). Kept
+    # deliberately low: a personal tracker needs only a handful of requests per
+    # item per day, and low, spaced-out volume is what keeps us under anti-bot
+    # thresholds instead of fighting them. See sources/_http.py.
+    scraper_rate_per_sec: int = 1
+    scraper_max_retries: int = 3
+
     # --- Reliability + caching (Phase 3) ---
     # Max calls/sec we allow ourselves to make to each source (rate limiting).
     source_rate_limit_per_sec: int = 5

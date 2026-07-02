@@ -14,6 +14,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from core.settings import get_settings
+from sources._http import PoliteClient, SourceBlockedError
 from sources.base import NormalizedOffer, parse_price
 from sources.html_helpers import (
     clean_text,
@@ -23,6 +24,11 @@ from sources.html_helpers import (
 )
 
 _PRODUCT_ID_RE = re.compile(r"-p-(\d+)")
+# SHEIN soft-blocks bots by 302-redirecting to a "risk" / captcha interstitial
+# (e.g. /risk/action/limit) that itself returns HTTP 200 — so raise_for_status
+# passes and the page looks like an empty result. Match that final URL and fail
+# loudly instead, so the worker's retry/dead-letter path engages.
+_BLOCK_PATH_RE = re.compile(r"/risk/", re.IGNORECASE)
 
 
 class SheinScraperSource:
@@ -36,7 +42,13 @@ class SheinScraperSource:
     ) -> None:
         s = get_settings()
         self.base_url = (base_url or s.shein_scraper_base_url).rstrip("/")
-        self._http = client or httpx.Client(timeout=timeout, follow_redirects=True)
+        # Default to the polite layer (throttle + backoff + headers); tests inject
+        # their own client and bypass it entirely.
+        self._http = client or PoliteClient(
+            timeout=timeout,
+            rate_per_sec=s.scraper_rate_per_sec,
+            max_retries=s.scraper_max_retries,
+        )
 
     def search(self, query: str) -> list[NormalizedOffer]:
         path = f"/pdsearch/{quote_plus(query)}/"
@@ -60,20 +72,16 @@ class SheinScraperSource:
         return offer
 
     def _get(self, path: str, params: dict | None = None) -> str:
+        # Headers/throttle/backoff live in the client (PoliteClient by default).
         resp = self._http.get(
             urljoin(f"{self.base_url}/", path.lstrip("/")),
             params=params,
-            headers={
-                "Accept": "text/html,application/xhtml+xml",
-                "Accept-Language": "en-US,en;q=0.9",
-                "User-Agent": (
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/126.0 Safari/537.36"
-                ),
-            },
         )
         resp.raise_for_status()
+        if _BLOCK_PATH_RE.search(httpx.URL(resp.url).path):
+            raise SourceBlockedError(
+                f"shein redirected to anti-bot interstitial: {resp.url}"
+            )
         return resp.text
 
     def _card_to_offer(self, card) -> NormalizedOffer | None:

@@ -60,25 +60,54 @@ def test_rapidapi_price_parsing():
     assert _parse_price("call for price") is None
 
 
-def test_rapidapi_to_offer():
+def test_rapidapi_to_offer_search_shape():
+    # /search products carry `price` at the top level (no nested `offer`) and a
+    # google-shopping `product_page_url`. Verified against a live response.
     product = {
-        "product_id": "abc123",
-        "product_title": "Sony WH-1000XM5 Wireless Headphones",
-        "product_page_url": "https://google.com/shopping/product/abc123",
-        "offer": {
-            "store_name": "Walmart",
-            "price": "$1,199.00",
-            "offer_page_url": "https://walmart.com/ip/123",
-        },
+        "product_id": "catalogid:3293221069798785293,productid:3511684401561976613",
+        "product_title": "AirPods 4 Apple",
+        "price": "$129.99",
+        "product_page_url": "https://www.google.com/search?ibp=oshop&q=airpods",
+        "store_name": "Target",
+        "on_sale": False,
     }
     offer = RapidApiProductSource()._to_offer(product)
     assert offer.source == "rapidapi"
-    assert offer.source_product_id == "abc123"
-    assert offer.price == Decimal("1199.00")
-    assert offer.url == "https://walmart.com/ip/123"
+    assert offer.source_product_id == (
+        "catalogid:3293221069798785293,productid:3511684401561976613"
+    )
+    assert offer.title == "AirPods 4 Apple"
+    assert offer.price == Decimal("129.99")
+    assert offer.currency == "USD"
+    assert offer.url == "https://www.google.com/search?ibp=oshop&q=airpods"
+    assert offer.available is True
+
+
+def test_rapidapi_to_offer_details_shape():
+    # /product-details returns a single product with an `offers` list; the price
+    # and the concrete retailer URL live on the first offer. Verified live.
+    product = {
+        "product_id": "catalogid:3293221069798785293",
+        "product_title": "AirPods 4 Apple",
+        "product_page_url": "https://www.google.com/search?ibp=oshop&q=airpods",
+        "typical_price_range": ["$85", "$130"],
+        "offers": [
+            {
+                "price": "$129.99",
+                "offer_page_url": "https://www.target.com/p/ap2022/-/A-85978615",
+                "store_name": "Target",
+            },
+            {"price": "$134.00", "offer_page_url": "https://x", "store_name": "Y"},
+        ],
+    }
+    offer = RapidApiProductSource()._to_offer(product)
+    assert offer.source_product_id == "catalogid:3293221069798785293"
+    assert offer.price == Decimal("129.99")
+    assert offer.currency == "USD"
+    assert offer.url == "https://www.target.com/p/ap2022/-/A-85978615"
     assert offer.available is True
 
 
 def test_rapidapi_skips_unpriced_product():
-    product = {"product_id": "x", "product_title": "x", "offer": {"price": None}}
+    product = {"product_id": "x", "product_title": "x", "offers": []}
     assert RapidApiProductSource()._to_offer(product) is None

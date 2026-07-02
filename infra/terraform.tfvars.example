@@ -1,0 +1,3 @@
+# Copy to terraform.tfvars and edit.
+region             = "us-east-1"
+budget_alert_email = "djsurti3003@gmail.com"

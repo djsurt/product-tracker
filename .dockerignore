@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env
+.env.*
+.venv
+__pycache__/
+*.pyc
+tests/
+docs/
+infra/
+.github/
+*.md
+docker-compose*.yml
+Caddyfile

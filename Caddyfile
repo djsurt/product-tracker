@@ -1,0 +1,5 @@
+# SITE_ADDRESS is a full https URL (e.g. https://deal-hunter.3-91-1-2.sslip.io).
+# Caddy auto-provisions a Let's Encrypt cert for it and proxies to the app.
+{$SITE_ADDRESS} {
+	reverse_proxy web:8000
+}

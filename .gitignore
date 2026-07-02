@@ -21,3 +21,10 @@ dist/
 
 # Celery Beat runtime schedule state (written by the beat container)
 celerybeat-schedule*
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+infra/terraform.tfvars
+infra/backend.hcl

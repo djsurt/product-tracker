@@ -14,6 +14,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from core.settings import get_settings
+from sources._http import PoliteClient
 from sources.base import NormalizedOffer, parse_price
 from sources.html_helpers import (
     clean_text,
@@ -36,7 +37,13 @@ class EbayScraperSource:
     ) -> None:
         s = get_settings()
         self.base_url = (base_url or s.ebay_scraper_base_url).rstrip("/")
-        self._http = client or httpx.Client(timeout=timeout, follow_redirects=True)
+        # Default to the polite layer (throttle + backoff + headers); tests inject
+        # their own client and bypass it entirely.
+        self._http = client or PoliteClient(
+            timeout=timeout,
+            rate_per_sec=s.scraper_rate_per_sec,
+            max_retries=s.scraper_max_retries,
+        )
 
     def search(self, query: str) -> list[NormalizedOffer]:
         html = self._get(
@@ -58,18 +65,10 @@ class EbayScraperSource:
         return offer
 
     def _get(self, path: str, params: dict | None = None) -> str:
+        # Headers/throttle/backoff live in the client (PoliteClient by default).
         resp = self._http.get(
             urljoin(f"{self.base_url}/", path.lstrip("/")),
             params=params,
-            headers={
-                "Accept": "text/html,application/xhtml+xml",
-                "Accept-Language": "en-US,en;q=0.9",
-                "User-Agent": (
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/126.0 Safari/537.36"
-                ),
-            },
         )
         resp.raise_for_status()
         return resp.text
