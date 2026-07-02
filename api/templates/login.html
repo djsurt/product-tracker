@@ -2,6 +2,10 @@
 {% block title %}Log in · Deal Hunter{% endblock %}
 {% block content %}
 <div class="card auth-card">
+  <svg class="auth-mark" viewBox="0 0 24 24" aria-hidden="true">
+    <path fill="var(--accent)" d="M12.6 2.6a2 2 0 0 1 1.4-.6H20a2 2 0 0 1 2 2v6a2 2 0 0 1-.6 1.4l-9 9a2 2 0 0 1-2.8 0l-6-6a2 2 0 0 1 0-2.8z"/>
+    <circle cx="17" cy="7" r="1.8" fill="white"/>
+  </svg>
   <h1>Welcome back</h1>
   <p class="lead" style="margin-bottom:20px;">Log in to check on your deals.</p>
   <form method="post" action="/login" class="stack">
