@@ -194,3 +194,74 @@ def test_refresh_all_enqueues_each_active_item(client, monkeypatch):
     assert resp.status_code == 303
     assert resp.headers["location"] == "/app/ops"
     assert len(queued) == 2
+
+
+# --- Add from screenshot (Phase 7) ------------------------------------------
+from core import vision as vision_mod
+from core.vision import ProductIdentification
+
+
+def _post_screenshot(client, content_type="image/png", data=b"\x89PNG..."):
+    return client.post(
+        "/app/items/identify",
+        files={"file": ("shot.png", data, content_type)},
+    )
+
+
+def test_identify_fragment_prefills_form(client, monkeypatch):
+    _register(client)
+    monkeypatch.setattr(
+        vision_mod, "identify_product",
+        lambda b, mt: ProductIdentification(
+            identified=True, title="Sony WH-1000XM5", query="sony wh-1000xm5",
+            brand="Sony", confidence="high",
+        ),
+    )
+    resp = _post_screenshot(client)
+    assert resp.status_code == 200
+    assert 'value="Sony WH-1000XM5"' in resp.text
+    assert 'value="sony wh-1000xm5"' in resp.text
+    assert 'hx-post="/app/items"' in resp.text  # confirm posts to existing path
+
+
+def test_identify_fragment_shows_error_on_failure(client, monkeypatch):
+    _register(client)
+
+    def boom(b, mt):
+        raise vision_mod.VisionUnavailable("down")
+
+    monkeypatch.setattr(vision_mod, "identify_product", boom)
+    resp = _post_screenshot(client)
+    assert resp.status_code == 200  # HTMX only swaps 2xx; error rides the fragment
+    assert "error" in resp.text
+
+
+def test_identify_fragment_rejects_bad_type(client):
+    _register(client)
+    resp = _post_screenshot(client, content_type="text/plain")
+    assert resp.status_code == 200
+    assert "PNG" in resp.text  # helpful message names the allowed formats
+
+
+def test_identify_requires_login(client):
+    resp = client.post(
+        "/app/items/identify",
+        files={"file": ("shot.png", b"\x89PNG...", "image/png")},
+        follow_redirects=False,
+    )
+    # 303 to /login, like every other /app route (see require_web_user)
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/login"
+
+
+def test_screenshot_flow_creates_tracked_item(client, monkeypatch):
+    """Confirming the prefilled form goes through the normal add-item path."""
+    _register(client)
+    monkeypatch.setattr(
+        vision_mod, "identify_product",
+        lambda b, mt: ProductIdentification(identified=True, title="T", query="q"),
+    )
+    assert _post_screenshot(client).status_code == 200
+    resp = client.post("/app/items", data={"title": "T", "query": "q", "target_price": ""})
+    assert resp.status_code == 200
+    assert "T" in resp.text

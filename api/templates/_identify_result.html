@@ -1,0 +1,25 @@
+{# Result of a screenshot identification: either a prefilled confirm form or an
+   error + empty manual form. Both post to the existing /app/items endpoint so
+   screenshot-adds and manual adds share one code path. #}
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<form hx-post="/app/items" hx-target="#items" hx-swap="innerHTML"
+      hx-on::after-request="if(event.detail.successful) this.reset()">
+  <div class="row" style="align-items:flex-end;">
+    <div class="grow">
+      <label for="id-title">Title</label>
+      <input id="id-title" name="title" value="{{ ident.title if ident else '' }}" required>
+    </div>
+    <div class="grow">
+      <label for="id-query">Search query</label>
+      <input id="id-query" name="query" value="{{ ident.query if ident else '' }}" required>
+    </div>
+    <div style="flex:0 0 130px;">
+      <label for="id-target">Target price</label>
+      <input id="id-target" name="target_price" type="number" step="0.01" min="0" placeholder="299.99">
+    </div>
+    <div>
+      <button type="submit">Track it</button>
+    </div>
+  </div>
+  {% if ident and ident.brand %}<p class="muted">Identified: {{ ident.brand }} · confidence {{ ident.confidence }}</p>{% endif %}
+</form>

@@ -30,6 +30,26 @@
   </form>
 </div>
 
+<div class="card">
+  <h2>Add from screenshot</h2>
+  <p class="muted">Upload a screenshot of a product — we'll identify it and prefill the form.</p>
+  <form hx-post="/app/items/identify" hx-target="#identify-result" hx-swap="innerHTML"
+        hx-encoding="multipart/form-data">
+    <div class="row" style="align-items:flex-end;">
+      <div class="grow">
+        <input type="file" name="file" accept="image/png,image/jpeg,image/webp,image/gif" required>
+      </div>
+      <div>
+        <button type="submit">
+          <span class="htmx-indicator" aria-hidden="true">⏳</span>
+          Identify
+        </button>
+      </div>
+    </div>
+  </form>
+  <div id="identify-result"></div>
+</div>
+
 <div id="items">
   {% include "_items.html" %}
 </div>
