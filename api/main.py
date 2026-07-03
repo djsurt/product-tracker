@@ -5,8 +5,11 @@ Business logic lives in routers/services, slow work lives in Celery workers.
 Run locally with: uvicorn api.main:app --reload
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI
 
+from api import mcp_server
 from api.deps import get_current_user
 from api.routers import auth, health, metrics, redirect, web, wishlist
 from api.schemas import UserOut
@@ -17,10 +20,19 @@ from core.settings import get_settings
 settings = get_settings()
 configure_logging()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # The MCP session manager must be running for /mcp to serve requests.
+    async with mcp_server.mcp_lifespan():
+        yield
+
+
 app = FastAPI(
     title="Deal Hunter API",
     version="0.1.0",
     description="Wishlist price tracking + best-deal finder.",
+    lifespan=lifespan,
 )
 
 app.include_router(health.router)
@@ -29,6 +41,7 @@ app.include_router(auth.router)
 app.include_router(wishlist.router)
 app.include_router(redirect.router)
 app.include_router(web.router)
+app.add_middleware(mcp_server.McpPathASGI)
 
 
 @app.get("/")
