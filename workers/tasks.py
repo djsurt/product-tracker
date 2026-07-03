@@ -24,6 +24,7 @@ from core import metrics
 from core.cache import RateLimiter, invalidate_best_deal, offer_lock
 from core.db import SessionLocal
 from core.email import send_email
+from core.events import publish_price_update
 from core.logging import get_logger
 from core.models import TrackedProduct
 from core.settings import get_settings
@@ -161,6 +162,7 @@ def fetch_offer(self, offer_id: str) -> str | None:
             db.commit()
 
         invalidate_best_deal(tracked_product_id)
+        publish_price_update(tracked_product_id)
         metrics.inc("deal_fetch_success_total")
         log.info(
             "fetch_offer.ok",
