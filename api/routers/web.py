@@ -26,8 +26,9 @@ from api.deps import SESSION_COOKIE, get_optional_web_user, require_web_user
 from api.jobs import enqueue_product_refresh
 from core import metrics, vision
 from core.db import get_db
-from core.models import Alert, DeadLetter, Offer, PricePoint, TrackedProduct, User
+from core.models import Alert, ApiToken, DeadLetter, Offer, PricePoint, TrackedProduct, User
 from core.security import create_access_token, hash_password, verify_password
+from core.tokens import generate_token
 from core.settings import get_settings
 from sources.registry import active_source_names
 
@@ -302,7 +303,9 @@ def dashboard(
         )
     )
     return templates.TemplateResponse(
-        request, "dashboard.html", {"user": user, "items": items}
+        request,
+        "dashboard.html",
+        {"user": user, "items": items, "tokens": _user_tokens(db, user)},
     )
 
 
@@ -534,3 +537,54 @@ def item_delete_alert(
         db.delete(alert)
         db.commit()
     return _render_alerts(request, item_id, db)
+
+
+# --- API tokens for the MCP endpoint (Phase 8) ------------------------------
+def _user_tokens(db: Session, user: User) -> list[ApiToken]:
+    return list(
+        db.scalars(
+            select(ApiToken)
+            .where(ApiToken.user_id == user.id)
+            .order_by(ApiToken.created_at.desc())
+        )
+    )
+
+
+def _render_tokens(
+    request: Request, user: User, db: Session, new_token: str | None = None
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "_tokens.html",
+        {"tokens": _user_tokens(db, user), "new_token": new_token},
+    )
+
+
+@router.post("/app/tokens", response_class=HTMLResponse)
+def create_api_token(
+    request: Request,
+    name: str = Form(...),
+    user: User = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    plain, digest = generate_token()
+    db.add(ApiToken(user_id=user.id, name=name.strip() or "unnamed", token_hash=digest))
+    db.commit()
+    # `plain` rides only in this one response — it is never persisted.
+    return _render_tokens(request, user, db, new_token=plain)
+
+
+@router.delete("/app/tokens/{token_id}", response_class=HTMLResponse)
+def revoke_api_token(
+    request: Request,
+    token_id: uuid.UUID,
+    user: User = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    row = db.scalar(
+        select(ApiToken).where(ApiToken.id == token_id, ApiToken.user_id == user.id)
+    )
+    if row is not None:
+        db.delete(row)
+        db.commit()
+    return _render_tokens(request, user, db)

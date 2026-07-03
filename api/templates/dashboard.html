@@ -60,4 +60,25 @@
 <div id="items">
   {% include "_items.html" %}
 </div>
+
+<div class="card">
+  <h2>Connect Claude (MCP)</h2>
+  <p class="hint">Create an API token, then add this app as an MCP server — Claude can
+    search deals, track products, and set alerts on your behalf:</p>
+  <pre style="overflow-x:auto;"><code>claude mcp add --transport http deal-hunter {{ request.base_url }}mcp \
+  --header "Authorization: Bearer &lt;your token&gt;"</code></pre>
+  <form hx-post="/app/tokens" hx-target="#tokens" hx-swap="innerHTML"
+        hx-on::after-request="if(event.detail.successful) this.reset()">
+    <div class="row" style="align-items:flex-end;">
+      <div class="grow">
+        <label for="token-name">Token name</label>
+        <input id="token-name" name="name" placeholder="my-laptop" required>
+      </div>
+      <div><button type="submit">Create token</button></div>
+    </div>
+  </form>
+  <div id="tokens" style="margin-top:14px;">
+    {% include "_tokens.html" %}
+  </div>
+</div>
 {% endblock %}

@@ -1,0 +1,34 @@
+{% if new_token %}
+<div class="card" style="margin-bottom: 12px;">
+  <p class="hint" style="margin: 0 0 6px;">Copy your token now — it won't be shown again.</p>
+  <code style="user-select: all; word-break: break-all;">{{ new_token }}</code>
+</div>
+{% endif %}
+
+{% if tokens %}
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Created</th><th>Last used</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for t in tokens %}
+      <tr>
+        <td>{{ t.name }}</td>
+        <td class="muted">{{ t.created_at.strftime("%Y-%m-%d") }}</td>
+        <td class="muted">{{ t.last_used_at.strftime("%Y-%m-%d %H:%M") if t.last_used_at else "never" }}</td>
+        <td>
+          <button class="secondary" hx-delete="/app/tokens/{{ t.id }}"
+                  hx-target="#tokens" hx-swap="innerHTML"
+                  hx-confirm="Revoke '{{ t.name }}'? Clients using it will stop working.">
+            Revoke
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="muted">No tokens yet. Create one to connect Claude to your wishlist.</p>
+{% endif %}
