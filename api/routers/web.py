@@ -14,15 +14,19 @@ from __future__ import annotations
 
 import uuid
 from decimal import Decimal, InvalidOperation
+from functools import partial
 from pathlib import Path
 
+import anyio.to_thread
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from api.deps import SESSION_COOKIE, get_optional_web_user, require_web_user
+from api.deps import SESSION_COOKIE, _user_from_cookie, get_optional_web_user, require_web_user
+from core.events import price_update_channel
 from api.jobs import enqueue_product_refresh
 from core import metrics, vision
 from core.db import get_db
@@ -113,7 +117,7 @@ def _best_deal(db: Session, item: TrackedProduct):
     return compute_best_deal(db, item, settings.price_history_window_days)
 
 
-def _render_offers(request: Request, item: TrackedProduct, db: Session) -> HTMLResponse:
+def _offers_context(item: TrackedProduct, db: Session) -> dict:
     offers = list(
         db.scalars(
             select(Offer)
@@ -135,11 +139,11 @@ def _render_offers(request: Request, item: TrackedProduct, db: Session) -> HTMLR
         )
         spark = _sparkline(list(reversed(history)))
 
-    return templates.TemplateResponse(
-        request,
-        "_offers.html",
-        {"offers": offers, "deal": deal, "spark": spark},
-    )
+    return {"offers": offers, "deal": deal, "spark": spark}
+
+
+def _render_offers(request: Request, item: TrackedProduct, db: Session) -> HTMLResponse:
+    return templates.TemplateResponse(request, "_offers.html", _offers_context(item, db))
 
 
 def _render_alerts(request: Request, item_id: uuid.UUID, db: Session) -> HTMLResponse:
@@ -588,3 +592,100 @@ def revoke_api_token(
         db.delete(row)
         db.commit()
     return _render_tokens(request, user, db)
+
+
+# --- SSE live prices (Phase 9) ----------------------------------------------
+# Both factories exist as seams so tests can inject sqlite + fakeredis.
+def _session() -> Session:
+    from core.db import SessionLocal
+
+    return SessionLocal()
+
+
+def _aioredis() -> "aioredis.Redis":
+    return aioredis.from_url(settings.redis_url, decode_responses=True)
+
+
+def _sse_frame(event: str, html: str) -> str:
+    data = "\n".join(f"data: {line}" for line in html.splitlines()) or "data:"
+    return f"event: {event}\n{data}\n\n"
+
+
+def _render_offers_html(item_id: uuid.UUID) -> str:
+    """Render the offers fragment in its own short-lived session.
+
+    The stream outlives any request-scoped session by minutes; holding a
+    Depends(get_db) session open that long would pin a pool connection per
+    open tab.
+    """
+    db = _session()
+    try:
+        item = db.get(TrackedProduct, item_id)
+        if item is None:
+            return ""
+        return templates.get_template("_offers.html").render(_offers_context(item, db))
+    finally:
+        db.close()
+
+
+@router.get("/app/items/{item_id}/stream")
+async def item_stream(request: Request, item_id: uuid.UUID):
+    # Auth + ownership run in a short-lived session (see _render_offers_html
+    # for why not Depends(get_db)). Same 303/404 semantics as the page routes.
+    def _gate() -> None:
+        db = _session()
+        try:
+            user = _user_from_cookie(request, db)
+            if user is None:
+                raise HTTPException(
+                    status_code=status.HTTP_303_SEE_OTHER,
+                    headers={"Location": "/login", "HX-Redirect": "/login"},
+                )
+            _owned(item_id, user, db)
+        finally:
+            db.close()
+
+    await anyio.to_thread.run_sync(_gate)
+
+    r = _aioredis()
+    pubsub = r.pubsub()
+    channel = price_update_channel(str(item_id))
+    try:
+        await pubsub.subscribe(channel)
+    except Exception:  # noqa: BLE001 - Redis down: the page still works statically
+        await r.aclose()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Live updates are unavailable right now",
+        )
+
+    async def event_stream():
+        try:
+            # Immediate first frame: the client renders without a separate
+            # hx-get, and reconnects repaint instantly.
+            html = await anyio.to_thread.run_sync(partial(_render_offers_html, item_id))
+            yield _sse_frame("offers", html)
+            while not await request.is_disconnected():
+                msg = await pubsub.get_message(
+                    ignore_subscribe_messages=True, timeout=15.0
+                )
+                if msg is None:
+                    yield ": keep-alive\n\n"  # comment frame; proxies stay open
+                    continue
+                html = await anyio.to_thread.run_sync(
+                    partial(_render_offers_html, item_id)
+                )
+                yield _sse_frame("offers", html)
+        finally:
+            await pubsub.unsubscribe(channel)
+            await pubsub.aclose()
+            await r.aclose()
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # tell buffering proxies to pass frames through
+        },
+    )
