@@ -43,3 +43,38 @@ def test_api_token_round_trip(db, user):
     assert got.name == "my-laptop"
     assert isinstance(got.created_at, datetime)
     assert got.last_used_at is None
+
+
+from core.tokens import TOKEN_PREFIX, generate_token, hash_token, resolve_token
+
+
+def test_generate_token_shape():
+    plain, digest = generate_token()
+    assert plain.startswith(TOKEN_PREFIX)
+    assert len(plain) > len(TOKEN_PREFIX) + 30
+    assert digest == hash_token(plain)
+    assert len(digest) == 64  # sha256 hex
+
+
+def test_resolve_token_finds_user_and_stamps_last_used(db, user):
+    plain, digest = generate_token()
+    db.add(ApiToken(user_id=user.id, name="t", token_hash=digest))
+    db.commit()
+
+    resolved = resolve_token(db, plain)
+    assert resolved is not None
+    assert resolved.id == user.id
+
+    row = db.scalar(select(ApiToken).where(ApiToken.token_hash == digest))
+    assert row.last_used_at is not None
+
+
+def test_resolve_token_rejects_unknown_and_malformed(db, user):
+    plain, digest = generate_token()
+    db.add(ApiToken(user_id=user.id, name="t", token_hash=digest))
+    db.commit()
+
+    assert resolve_token(db, None) is None
+    assert resolve_token(db, "") is None
+    assert resolve_token(db, "not-a-token") is None                      # no prefix
+    assert resolve_token(db, TOKEN_PREFIX + "wrong-suffix") is None      # unknown
