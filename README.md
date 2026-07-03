@@ -42,6 +42,7 @@ Built one phase at a time — each phase is independently runnable and demo-able
 - **Phase 6 — Frontend + cloud deploy** ✅ server-rendered HTMX UI (`/app`) with live-polling prices + SVG price chart, cookie auth, `render.yaml` deploy blueprint
 - **Phase 7 — Add from screenshot** ✅ upload a product screenshot; Claude vision (`claude-haiku-4-5`) identifies it into a prefilled wishlist entry (config-gated by `ANTHROPIC_API_KEY`)
 - **Phase 8 — Remote MCP server** ✅ token-authenticated MCP endpoint at `/mcp` (Streamable HTTP); create a token on the dashboard, then let Claude manage your wishlist
+- **Phase 9 — SSE live prices** ✅ item page streams price updates over Server-Sent Events (Redis pub/sub → `/app/items/{id}/stream` → htmx SSE extension) instead of polling
 
 ## Running locally
 
