@@ -43,3 +43,9 @@ fakeredis>=2.23   # in-memory Redis for unit tests (cache/ratelimit/lock)
 # Screenshot identification (Phase 7): Claude vision turns a product screenshot
 # into a title + search query that feeds the existing text-search pipeline.
 anthropic>=0.92
+
+# Remote MCP server (Phase 8): Streamable-HTTP endpoint mounted at /mcp.
+# anyio is already a transitive dep (starlette), pinned here because we
+# import it directly for thread offloading.
+mcp>=1.10
+anyio>=4.5

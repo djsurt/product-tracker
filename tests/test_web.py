@@ -265,3 +265,18 @@ def test_screenshot_flow_creates_tracked_item(client, monkeypatch):
     resp = client.post("/app/items", data={"title": "T", "query": "q", "target_price": ""})
     assert resp.status_code == 200
     assert "T" in resp.text
+
+
+def test_item_detail_uses_sse_stream(client):
+    _register(client, email="sse-ui@example.com")
+    client.post("/app/items", data={"title": "Camera", "query": "camera"})
+    dash = client.get("/app")
+    marker = 'href="/app/items/'
+    start = dash.text.index(marker) + len('href="')
+    item_url = dash.text[start : dash.text.index('"', start)]
+
+    page = client.get(item_url)
+    assert 'hx-ext="sse"' in page.text
+    assert f'sse-connect="{item_url}/stream"' in page.text
+    assert 'sse-swap="offers"' in page.text
+    assert "every 5s" not in page.text  # polling is gone

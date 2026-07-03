@@ -220,3 +220,24 @@ class DeadLetter(Base):
     error: Mapped[str] = mapped_column(Text)
     retries: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class ApiToken(Base):
+    """A personal access token for the remote MCP endpoint (Phase 8).
+
+    We store only a SHA-256 digest of the token — the plaintext is shown once
+    at creation and never again (the GitHub PAT pattern), so a DB leak doesn't
+    hand out working credentials. `last_used_at` lets the UI show whether a
+    token is actually in use before the user revokes it.
+    """
+
+    __tablename__ = "api_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(100))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    last_used_at: Mapped[datetime | None] = mapped_column(nullable=True)
