@@ -25,6 +25,12 @@
   </div>
   <p class="hint"><span class="live-dot" aria-hidden="true"></span>Live — prices stream in the moment a worker records them.</p>
   <div hx-ext="sse" sse-connect="/app/items/{{ item.id }}/stream">
+    {% if m3d_enabled %}
+    <div style="margin-top:14px;">
+      <h3 style="margin:0 0 8px;">3D preview</h3>
+      <div id="model3d" sse-swap="model3d">{% include "_model3d.html" %}</div>
+    </div>
+    {% endif %}
     <div id="offers" sse-swap="offers" style="margin-top:14px;">
       <div aria-hidden="true">
         <div class="skel skel-verdict"></div>

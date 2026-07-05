@@ -162,3 +162,83 @@ def test_product_model3d_defaults_and_unique(db):
     with pytest.raises(Exception):
         db.commit()
     db.rollback()
+
+
+# --- web routes (use the shared client fixture) -----------------------------
+def _web_item(client):
+    import re
+
+    client.post(
+        "/register",
+        data={"email": f"{uuid.uuid4()}@x.com", "password": "supersecret"},
+        follow_redirects=False,
+    )
+    client.post("/app/items", data={"title": "XM5", "query": "xm5"})
+    dash = client.get("/app").text
+    return re.search(r"/app/items/([0-9a-f-]{36})", dash).group(1)
+
+
+def test_model3d_dark_without_key(client):
+    item_id = _web_item(client)
+    page = client.get(f"/app/items/{item_id}")
+    assert page.status_code == 200
+    assert "model3d" not in page.text  # zero UI surface when unconfigured
+    resp = client.post(f"/app/items/{item_id}/model3d")
+    assert resp.status_code == 503
+
+
+def test_model3d_trigger_enqueues_and_shows_generating(client, monkeypatch):
+    from api.routers import web as web_mod
+
+    monkeypatch.setattr(web_mod.settings, "meshy_api_key", "k")
+    monkeypatch.setattr(web_mod, "model3d_quota_ok", lambda: True)
+    monkeypatch.setattr(web_mod, "model3d_quota_spend", lambda: None)
+    monkeypatch.setattr(
+        web_mod, "_item_image", lambda item, best_offer_id=None: "http://i/x.jpg"
+    )
+    calls = []
+    monkeypatch.setattr(
+        "workers.tasks.generate_model3d.delay", lambda *a: calls.append(a)
+    )
+    item_id = _web_item(client)
+    resp = client.post(f"/app/items/{item_id}/model3d")
+    assert resp.status_code == 200
+    assert "Sculpting" in resp.text
+    assert len(calls) == 1
+
+
+def test_model3d_cap_reached_state(client, monkeypatch):
+    from api.routers import web as web_mod
+
+    monkeypatch.setattr(web_mod.settings, "meshy_api_key", "k")
+    monkeypatch.setattr(web_mod, "model3d_quota_ok", lambda: False)
+    monkeypatch.setattr(
+        web_mod, "_item_image", lambda item, best_offer_id=None: "http://i/x.jpg"
+    )
+    calls = []
+    monkeypatch.setattr(
+        "workers.tasks.generate_model3d.delay", lambda *a: calls.append(a)
+    )
+    item_id = _web_item(client)
+    resp = client.post(f"/app/items/{item_id}/model3d")
+    assert resp.status_code == 200
+    assert "3D budget" in resp.text
+    assert calls == []
+
+
+def test_model_file_requires_ownership_and_existence(client, monkeypatch):
+    from api.routers import web as web_mod
+
+    monkeypatch.setattr(web_mod.settings, "meshy_api_key", "k")
+    item_id = _web_item(client)
+    # no model row yet -> 404 even for the owner
+    assert client.get(f"/app/models/{item_id}.glb").status_code == 404
+    # a different user gets 404 by ownership
+    client.cookies.clear()
+    client.post(
+        "/register",
+        data={"email": "other@x.com", "password": "supersecret"},
+        follow_redirects=False,
+    )
+    assert client.get(f"/app/models/{item_id}.glb").status_code == 404
+    assert client.get(f"/app/models/{item_id}.exe").status_code == 404

@@ -22,17 +22,32 @@ from datetime import datetime, timezone
 import anyio.to_thread
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    RedirectResponse,
+    StreamingResponse,
+)
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from api.deps import SESSION_COOKIE, _user_from_cookie, get_optional_web_user, require_web_user
-from core.events import price_update_channel
+from core.events import model3d_update_channel, price_update_channel
 from api.jobs import enqueue_product_refresh
 from core import metrics, vision
+from core.cache import model3d_quota_ok, model3d_quota_spend
 from core.db import get_db
-from core.models import Alert, ApiToken, DeadLetter, Offer, PricePoint, TrackedProduct, User
+from core.models import (
+    Alert,
+    ApiToken,
+    DeadLetter,
+    Offer,
+    PricePoint,
+    ProductModel3D,
+    TrackedProduct,
+    User,
+)
 from core.security import create_access_token, hash_password, verify_password
 from core.tokens import generate_token
 from core.settings import get_settings
@@ -630,7 +645,9 @@ def item_detail(
         )
     )
     return templates.TemplateResponse(
-        request, "item_detail.html", {"user": user, "item": item, "alerts": alerts}
+        request,
+        "item_detail.html",
+        {"user": user, "item": item, "alerts": alerts, **_model3d_context(item, db)},
     )
 
 
@@ -927,3 +944,85 @@ async def item_stream(request: Request, item_id: uuid.UUID):
             "X-Accel-Buffering": "no",  # tell buffering proxies to pass frames through
         },
     )
+
+
+# --- 3D/AR preview (Phase 10) ----------------------------------------------
+def _model3d_row(db: Session, item_id: uuid.UUID) -> ProductModel3D | None:
+    return db.scalar(
+        select(ProductModel3D).where(ProductModel3D.tracked_product_id == item_id)
+    )
+
+
+def _model3d_context(item: TrackedProduct, db: Session) -> dict:
+    enabled = settings.meshy_api_key is not None
+    return {
+        "item": item,
+        "m3d": _model3d_row(db, item.id) if enabled else None,
+        "m3d_enabled": enabled,
+        "m3d_has_image": _item_image(item) is not None,
+        "m3d_quota_ok": model3d_quota_ok() if enabled else False,
+    }
+
+
+def _render_model3d_html(item_id: uuid.UUID) -> str:
+    """Fragment render in a short-lived session (same reasoning as offers)."""
+    db = _session()
+    try:
+        item = db.get(TrackedProduct, item_id)
+        if item is None:
+            return ""
+        return templates.get_template("_model3d.html").render(
+            _model3d_context(item, db)
+        )
+    finally:
+        db.close()
+
+
+@router.post("/app/items/{item_id}/model3d", response_class=HTMLResponse)
+def item_generate_model3d(
+    request: Request,
+    item_id: uuid.UUID,
+    user: User = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    item = _owned(item_id, user, db)
+    if settings.meshy_api_key is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+    image = _item_image(item)
+    row = _model3d_row(db, item.id)
+    startable = row is None or row.status in ("failed", "ready")
+    if image and startable and model3d_quota_ok():
+        if row is None:
+            row = ProductModel3D(tracked_product_id=item.id, source_image_url=image)
+            db.add(row)
+        else:  # explicit retry / regenerate: reset for a fresh run
+            row.status = "pending"
+            row.error = None
+            row.provider_task_id = None
+            row.source_image_url = image
+        db.commit()
+        model3d_quota_spend()
+        from workers.tasks import generate_model3d
+
+        generate_model3d.delay(str(row.id))
+    return templates.TemplateResponse(
+        request, "_model3d.html", _model3d_context(item, db)
+    )
+
+
+@router.get("/app/models/{item_id}.{fmt}")
+def model3d_file(
+    item_id: uuid.UUID,
+    fmt: str,
+    user: User = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    if fmt not in ("glb", "usdz"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    _owned(item_id, user, db)  # 404s for other users' items
+    row = _model3d_row(db, item_id)
+    path = Path(settings.model3d_storage_dir) / f"{item_id}.{fmt}"
+    if row is None or row.status != "ready" or not path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    media = "model/gltf-binary" if fmt == "glb" else "model/vnd.usdz+zip"
+    return FileResponse(path, media_type=media)
