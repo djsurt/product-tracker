@@ -11,7 +11,7 @@
           {{ "$%s" % a.threshold if a.rule == "below_target" else "%s%%" % a.threshold }}
         {% else %}<span class="muted">(item target)</span>{% endif %}
       </td>
-      <td class="muted">{{ a.last_fired_at.strftime("%Y-%m-%d %H:%M") if a.last_fired_at else "—" }}</td>
+      <td class="muted">{{ a.last_fired_at | reltime }}</td>
       <td style="text-align:right;">
         <button class="danger"
                 hx-delete="/app/items/{{ a.tracked_product_id }}/alerts/{{ a.id }}"

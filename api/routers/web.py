@@ -17,6 +17,8 @@ from decimal import Decimal, InvalidOperation
 from functools import partial
 from pathlib import Path
 
+from datetime import datetime, timezone
+
 import anyio.to_thread
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
@@ -40,6 +42,27 @@ router = APIRouter(tags=["web"])
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
 settings = get_settings()
+
+
+def _reltime(dt: datetime | None) -> str:
+    """Human-relative timestamp ("4 min ago") — recency at a glance beats ISO."""
+    if dt is None:
+        return "—"
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    seconds = (datetime.now(timezone.utc) - dt).total_seconds()
+    if seconds < 60:
+        return "just now"
+    if seconds < 3600:
+        return f"{int(seconds // 60)} min ago"
+    if seconds < 86400:
+        hours = int(seconds // 3600)
+        return f"{hours} hr ago" if hours == 1 else f"{hours} hrs ago"
+    days = int(seconds // 86400)
+    return "yesterday" if days == 1 else f"{days} days ago"
+
+
+templates.env.filters["reltime"] = _reltime
 
 DEMO_ITEMS = [
     ("Sony WH-1000XM5", "sony wh-1000xm5", Decimal("299.99")),
@@ -117,6 +140,36 @@ def _best_deal(db: Session, item: TrackedProduct):
     return compute_best_deal(db, item, settings.price_history_window_days)
 
 
+def _item_image(item: TrackedProduct, best_offer_id=None) -> str | None:
+    """Pick the item's display image: the best offer's, else any offer's."""
+    if best_offer_id is not None:
+        for o in item.offers:
+            if o.id == best_offer_id and o.image_url:
+                return o.image_url
+    return next((o.image_url for o in item.offers if o.image_url), None)
+
+
+def _items_context(user: User, db: Session) -> dict:
+    """Wishlist rows + each item's best deal, so the list answers "good price?"
+    without a click-through. Per-item queries are fine at wishlist scale."""
+    items = list(
+        db.scalars(
+            select(TrackedProduct)
+            .where(TrackedProduct.user_id == user.id)
+            .order_by(TrackedProduct.created_at.desc())
+        )
+    )
+    deals = {item.id: _best_deal(db, item) for item in items}
+    images = {
+        item.id: _item_image(item, deals[item.id].best_offer_id) for item in items
+    }
+    return {"items": items, "deals": deals, "images": images}
+
+
+def _render_items(request: Request, user: User, db: Session) -> HTMLResponse:
+    return templates.TemplateResponse(request, "_items.html", _items_context(user, db))
+
+
 def _offers_context(item: TrackedProduct, db: Session) -> dict:
     offers = list(
         db.scalars(
@@ -139,7 +192,13 @@ def _offers_context(item: TrackedProduct, db: Session) -> dict:
         )
         spark = _sparkline(list(reversed(history)))
 
-    return {"offers": offers, "deal": deal, "spark": spark}
+    return {
+        "offers": offers,
+        "deal": deal,
+        "spark": spark,
+        "item": item,
+        "item_image": _item_image(item, deal.best_offer_id),
+    }
 
 
 def _render_offers(request: Request, item: TrackedProduct, db: Session) -> HTMLResponse:
@@ -299,17 +358,10 @@ def dashboard(
     user: User = Depends(require_web_user),
     db: Session = Depends(get_db),
 ):
-    items = list(
-        db.scalars(
-            select(TrackedProduct)
-            .where(TrackedProduct.user_id == user.id)
-            .order_by(TrackedProduct.created_at.desc())
-        )
-    )
     return templates.TemplateResponse(
         request,
         "dashboard.html",
-        {"user": user, "items": items, "tokens": _user_tokens(db, user)},
+        {"user": user, "tokens": _user_tokens(db, user), **_items_context(user, db)},
     )
 
 
@@ -387,14 +439,100 @@ def create_item(
     db.commit()
     db.refresh(item)
     enqueue_product_refresh(item.id)
-    items = list(
-        db.scalars(
-            select(TrackedProduct)
-            .where(TrackedProduct.user_id == user.id)
-            .order_by(TrackedProduct.created_at.desc())
+    return _render_items(request, user, db)
+
+
+@router.post("/app/items/track-url", response_class=HTMLResponse)
+def track_by_url(
+    request: Request,
+    url: str = Form(...),
+    target_price: str | None = Form(None),
+    user: User = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    """Paste any product page URL → scrape its structured data → track it.
+
+    Always 200 (HTMX only swaps 2xx): failures ride inside the fragment. On
+    success the fragment also carries an out-of-band swap that refreshes the
+    wishlist, and a normal refresh is enqueued so the *other* sources get
+    searched for the same product by name.
+    """
+    import httpx
+
+    from sources._http import SourceBlockedError
+    from sources.registry import get_source
+    from workers.pipeline import record_price
+
+    url = url.strip()
+    error = None
+    observed = None
+    try:
+        observed = get_source("web").fetch(url)
+    except KeyError:
+        error = "Track-by-URL isn't enabled on this server."
+    except SourceBlockedError:
+        error = "That store blocks automated access, so we can't track it directly. If it's on eBay or one of our API sources, try the marketplace search instead."
+    except ValueError:
+        error = "Couldn't find a price on that page — the store may not publish product data. Try adding the item by name above instead."
+    except httpx.HTTPError:
+        error = "Couldn't reach that page. Check the link and try again."
+
+    if error:
+        return templates.TemplateResponse(
+            request, "_track_url_result.html", {"error": error, "item": None}
+        )
+
+    # Idempotent per (user, url): pasting the same link twice links to the
+    # existing item rather than spawning a duplicate watcher.
+    existing = db.scalar(
+        select(Offer)
+        .join(TrackedProduct, TrackedProduct.id == Offer.tracked_product_id)
+        .where(
+            TrackedProduct.user_id == user.id,
+            Offer.source == "web",
+            Offer.source_product_id == url,
         )
     )
-    return templates.TemplateResponse(request, "_items.html", {"items": items})
+    if existing is not None:
+        return templates.TemplateResponse(
+            request,
+            "_track_url_result.html",
+            {"error": None, "item": existing.tracked_product, "already": True},
+        )
+
+    item = TrackedProduct(
+        user_id=user.id,
+        title=observed.title[:255],
+        query=observed.title[:512],  # lets the other sources find it by name
+        target_price=_parse_decimal(target_price),
+    )
+    db.add(item)
+    db.flush()
+    offer = Offer(
+        tracked_product_id=item.id,
+        source=observed.source,
+        source_product_id=observed.source_product_id,
+        title=observed.title[:255],
+        url=observed.url,
+        currency=observed.currency,
+        image_url=observed.image_url,
+    )
+    db.add(offer)
+    db.flush()
+    record_price(db, offer, observed)  # first price point lands immediately
+    db.commit()
+    enqueue_product_refresh(item.id)
+    return templates.TemplateResponse(
+        request,
+        "_track_url_result.html",
+        {
+            "error": None,
+            "item": item,
+            "already": False,
+            "price": observed.price,
+            **_items_context(user, db),
+        },
+    )
 
 
 @router.post("/app/items/identify", response_class=HTMLResponse)
@@ -441,14 +579,39 @@ def delete_item(
 ):
     db.delete(_owned(item_id, user, db))
     db.commit()
-    items = list(
-        db.scalars(
-            select(TrackedProduct)
-            .where(TrackedProduct.user_id == user.id)
-            .order_by(TrackedProduct.created_at.desc())
-        )
-    )
-    return templates.TemplateResponse(request, "_items.html", {"items": items})
+    return _render_items(request, user, db)
+
+
+@router.post("/app/items/{item_id}/toggle", response_class=HTMLResponse)
+def toggle_item(
+    request: Request,
+    item_id: uuid.UUID,
+    user: User = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    """Pause/resume tracking. Resuming re-enqueues a refresh so the user sees
+    fresh prices right away instead of waiting for the next scheduled sweep."""
+    item = _owned(item_id, user, db)
+    item.is_active = not item.is_active
+    db.commit()
+    if item.is_active:
+        enqueue_product_refresh(item.id)
+    return _render_items(request, user, db)
+
+
+@router.post("/app/items/{item_id}/target")
+def update_target_price(
+    item_id: uuid.UUID,
+    target_price: str | None = Form(None),
+    user: User = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    """Set or clear the target price. Full redirect (not a fragment): the
+    verdict, savings line, and alert fallbacks all depend on the target."""
+    item = _owned(item_id, user, db)
+    item.target_price = _parse_decimal(target_price)
+    db.commit()
+    return RedirectResponse(f"/app/items/{item_id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
 # --- item detail + live partials ------------------------------------------
@@ -541,6 +704,81 @@ def item_delete_alert(
         db.delete(alert)
         db.commit()
     return _render_alerts(request, item_id, db)
+
+
+# --- Marketplace: live search across sources, one click to track ------------
+@router.get("/app/marketplace", response_class=HTMLResponse)
+def marketplace_page(
+    request: Request,
+    user: User = Depends(require_web_user),
+):
+    # "web" is URL-fed (track-by-URL), never part of query fan-out — listing it
+    # in "Searching …" would promise results it can't produce.
+    searchable = [n for n in active_source_names() if n != "web"]
+    return templates.TemplateResponse(
+        request,
+        "marketplace.html",
+        {"user": user, "active_sources": searchable},
+    )
+
+
+@router.post("/app/marketplace/search", response_class=HTMLResponse)
+def marketplace_search(
+    request: Request,
+    query: str = Form(""),
+    user: User = Depends(require_web_user),
+):
+    """Fan out to the live sources and render the results fragment.
+
+    Reuses the MCP service's search (same caps, same graceful per-source
+    degradation) so the web UI and Claude see identical marketplace results.
+    Sync route: FastAPI runs it in the threadpool, where the sources' blocking
+    HTTP clients are fine.
+    """
+    from api.mcp_service import svc_search_deals
+
+    query = query.strip()
+    if not query:
+        return templates.TemplateResponse(
+            request,
+            "_marketplace_results.html",
+            {"results": None, "failed_sources": [], "query": ""},
+        )
+    found = svc_search_deals(query)
+    results = sorted(found["results"], key=lambda r: r["price"])
+    return templates.TemplateResponse(
+        request,
+        "_marketplace_results.html",
+        {"results": results, "failed_sources": found["failed_sources"], "query": query},
+    )
+
+
+@router.post("/app/marketplace/track", response_class=HTMLResponse)
+def marketplace_track(
+    request: Request,
+    title: str = Form(...),
+    query: str = Form(...),
+    user: User = Depends(require_web_user),
+    db: Session = Depends(get_db),
+):
+    """One-click track from a search result. Idempotent per (user, query):
+    tracking the same search twice links to the existing item instead of
+    creating a duplicate watcher."""
+    query = query.strip()
+    item = db.scalar(
+        select(TrackedProduct).where(
+            TrackedProduct.user_id == user.id, TrackedProduct.query == query
+        )
+    )
+    if item is None:
+        item = TrackedProduct(
+            user_id=user.id, title=title.strip()[:255], query=query
+        )
+        db.add(item)
+        db.commit()
+        db.refresh(item)
+        enqueue_product_refresh(item.id)
+    return templates.TemplateResponse(request, "_market_tracked.html", {"item": item})
 
 
 # --- API tokens for the MCP endpoint (Phase 8) ------------------------------

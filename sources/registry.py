@@ -15,6 +15,7 @@ from sources.mock import MockStoreSource
 from sources.rapidapi import RapidApiProductSource
 from sources.scraper import ScraperSource
 from sources.shein_scraper import SheinScraperSource
+from sources.webpage import WebPageSource
 
 
 def _build_registry() -> dict[str, PriceSource]:
@@ -33,6 +34,8 @@ def _build_registry() -> dict[str, PriceSource]:
         sources.append(EbayScraperSource())
     if s.shein_scraper_enabled:
         sources.append(SheinScraperSource())
+    if s.web_source_enabled:
+        sources.append(WebPageSource())
 
     return {src.name: src for src in sources}
 

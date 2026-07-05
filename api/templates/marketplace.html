@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Browse deals · Deal Hunter{% endblock %}
+{% block content %}
+<h1>Browse deals</h1>
+<p class="lead">Search live prices across every connected store. Track anything you like — we’ll watch it from there and tell you when to buy.</p>
+
+<div class="card">
+  <form hx-post="/app/marketplace/search" hx-target="#market-results" hx-swap="innerHTML"
+        hx-disabled-elt="find button">
+    <div class="row" style="align-items:flex-end;">
+      <div class="grow">
+        <label for="market-query">What are you shopping for?</label>
+        <input id="market-query" name="query" placeholder="wireless headphones" required autofocus>
+      </div>
+      <div>
+        <button type="submit">
+          <span class="htmx-indicator" aria-hidden="true">⏳</span>
+          Search
+        </button>
+      </div>
+    </div>
+  </form>
+  <p class="hint">Searching {{ active_sources | join(", ") }} — live prices, so results take a moment.</p>
+  <div id="market-results" style="margin-top:14px;" aria-live="polite">
+    <div class="empty">
+      <svg class="empty-illo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"/>
+        <path d="M21 21l-4.35-4.35"/>
+      </svg>
+      <strong>Search the marketplaces</strong>
+      Type a product above — we’ll fetch current prices from every store we’re connected to.
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -2,10 +2,24 @@
 <div class="card">
   <div class="item-list">
     {% for item in items %}
-    <div class="item-row">
-      <div>
-        <a class="i-title" href="/app/items/{{ item.id }}">{{ item.title }}</a>
-        <span class="i-query">{{ item.query }}</span>
+    {% set deal = deals.get(item.id) if deals else None %}
+    <div class="item-row{% if not item.is_active %} is-paused{% endif %}">
+      <div class="with-thumb">
+        {% with img = images.get(item.id) if images else None, size = '' %}{% include "_thumb.html" %}{% endwith %}
+        <div style="min-width:0;">
+          <a class="i-title" href="/app/items/{{ item.id }}">{{ item.title }}</a>
+          <span class="i-query">{{ item.query }}</span>
+        </div>
+      </div>
+      <div class="i-cell-deal">
+        {% if not item.is_active %}
+          <span class="badge paused">paused</span>
+        {% elif deal and deal.best_price is not none %}
+          <span class="price">${{ deal.best_price }}</span>
+          <span class="badge {{ deal.verdict }}">{{ deal.verdict | replace("_", " ") }}</span>
+        {% else %}
+          <span class="badge no_data">checking…</span>
+        {% endif %}
       </div>
       <div class="i-cell-target">
         {% if item.target_price is not none %}
@@ -14,10 +28,11 @@
           <span class="chip"><span class="chip-label">no target</span></span>
         {% endif %}
       </div>
-      <div>
-        {% if item.is_active %}<span class="badge active">active</span>{% else %}<span class="badge paused">paused</span>{% endif %}
-      </div>
       <div class="i-row-actions" style="text-align:right;">
+        <button class="ghost"
+                hx-post="/app/items/{{ item.id }}/toggle"
+                hx-target="#items" hx-swap="innerHTML">
+          {{ "Resume" if not item.is_active else "Pause" }}</button>
         <button class="danger"
                 hx-delete="/app/items/{{ item.id }}"
                 hx-target="#items" hx-swap="innerHTML"
@@ -36,6 +51,6 @@
     <path d="M3 3.5l1.2 1.2M2 8h1.7M7.5 2v1.7" stroke-width="1.3"/>
   </svg>
   <strong>Your wishlist is empty</strong>
-  Add a product above and we’ll start watching its price across stores.
+  Add a product above — or <a href="/app/marketplace">browse live deals</a> and track one from there.
 </div>
 {% endif %}

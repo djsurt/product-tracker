@@ -1,0 +1,12 @@
+{# Product thumbnail. Vars: `img` (url or None), `size` ('' | 'thumb-lg' | 'thumb-sm').
+   The brand tag icon is the placeholder; a loaded image covers it, and a broken
+   image removes itself so the placeholder shows again. #}
+<span class="thumb {{ size or '' }}" aria-hidden="true">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+       stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12.6 2.6a2 2 0 0 1 1.4-.6H20a2 2 0 0 1 2 2v6a2 2 0 0 1-.6 1.4l-9 9a2 2 0 0 1-2.8 0l-6-6a2 2 0 0 1 0-2.8z"/>
+    <circle cx="17" cy="7" r="1.8"/>
+  </svg>
+  {% if img %}<img src="{{ img }}" alt="" loading="lazy" referrerpolicy="no-referrer"
+                   onerror="this.remove()">{% endif %}
+</span>

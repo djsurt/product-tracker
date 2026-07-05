@@ -60,6 +60,11 @@ class Settings(BaseSettings):
     shein_scraper_enabled: bool = False
     shein_scraper_base_url: str = "https://us.shein.com"
 
+    # Track-by-URL ("web" source): reads schema.org/OpenGraph/microdata from any
+    # product page the user pastes. On by default — it needs no credentials and
+    # only ever fetches URLs a user explicitly asked us to track.
+    web_source_enabled: bool = True
+
     # Per-host politeness for the marketplace HTML scrapers (eBay / SHEIN). Kept
     # deliberately low: a personal tracker needs only a handful of requests per
     # item per day, and low, spaced-out volume is what keeps us under anti-bot

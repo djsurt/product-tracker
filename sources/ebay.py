@@ -96,4 +96,13 @@ class EbaySource:
             currency=price["currency"],
             url=item.get("itemWebUrl", ""),
             available=in_stock,
+            image_url=(item.get("image") or {}).get("imageUrl")
+            or next(
+                (
+                    t.get("imageUrl")
+                    for t in item.get("thumbnailImages") or []
+                    if t.get("imageUrl")
+                ),
+                None,
+            ),
         )

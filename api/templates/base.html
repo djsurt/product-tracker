@@ -184,6 +184,12 @@
     }
     button.secondary:hover, .btn.secondary:hover { background: var(--surface-2); border-color: var(--ink-soft); }
 
+    button.ghost, .btn.ghost {
+      background: transparent; color: var(--ink-soft); border-color: transparent;
+      padding: 7px 11px; font-weight: 500; box-shadow: none;
+    }
+    button.ghost:hover, .btn.ghost:hover { background: var(--surface-3); color: var(--ink); border-color: transparent; transform: none; box-shadow: none; }
+
     button.danger, .btn.danger {
       background: transparent; color: var(--bad); border-color: transparent;
       padding: 7px 11px; font-weight: 500; box-shadow: none;
@@ -201,6 +207,22 @@
       70%  { box-shadow: 0 0 0 12px oklch(0.55 0.130 158 / 0); }
       100% { box-shadow: 0 0 0 0 oklch(0.55 0.130 158 / 0); }
     }
+
+    /* ---- Product thumbnails ---- */
+    .thumb {
+      position: relative; flex: none; overflow: hidden;
+      width: 48px; height: 48px; border-radius: var(--radius-sm);
+      background: var(--accent-tint); border: 1px solid var(--line);
+      display: inline-flex; align-items: center; justify-content: center;
+      color: var(--accent-ink);
+    }
+    .thumb svg { width: 20px; height: 20px; }
+    .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: var(--surface); }
+    .thumb-lg { width: 76px; height: 76px; border-radius: var(--radius); }
+    .thumb-lg svg { width: 28px; height: 28px; }
+    .thumb-sm { width: 34px; height: 34px; border-radius: 8px; }
+    .thumb-sm svg { width: 16px; height: 16px; }
+    .with-thumb { display: flex; align-items: center; gap: 12px; min-width: 0; }
 
     /* ---- Wishlist item rows ---- */
     .item-list { display: flex; flex-direction: column; }
@@ -223,7 +245,11 @@
     .i-title:focus-visible { box-shadow: none; }
     .i-title:focus-visible::after { box-shadow: inset 0 0 0 3px var(--accent-ring); }
     .i-query { display: block; color: var(--ink-soft); font-size: 13px; font-weight: 400; margin-top: 1px; }
-    .i-row-actions { position: relative; z-index: 1; }
+    .i-row-actions { position: relative; z-index: 1; white-space: nowrap; }
+    .i-cell-deal { display: inline-flex; align-items: center; gap: 8px; }
+    .item-row.is-paused .i-title,
+    .item-row.is-paused .i-cell-deal,
+    .item-row.is-paused .chip { color: var(--ink-soft); }
     .chip {
       display: inline-flex; align-items: baseline; gap: 4px;
       padding: 3px 10px; border-radius: var(--radius-pill);
@@ -234,7 +260,7 @@
 
     /* ---- Tables ---- */
     .table-wrap { overflow-x: auto; margin: 0 -4px; -webkit-overflow-scrolling: touch; }
-    table { width: 100%; border-collapse: collapse; min-width: 480px; }
+    table { width: 100%; border-collapse: collapse; min-width: 540px; }
     th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line-soft); }
     tr:last-child td { border-bottom: none; }
     thead th {
@@ -280,6 +306,7 @@
       background: linear-gradient(135deg, var(--warn-tint), oklch(0.99 0.012 85) 75%);
       border-color: oklch(0.52 0.105 75 / 0.3);
     }
+    .verdict .v-main { flex: 1 1 200px; min-width: 0; }
     .verdict .v-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); margin-bottom: 2px; }
     .verdict .v-price {
       font-size: clamp(32px, 7vw, 42px); font-weight: 800; line-height: 1.05;
@@ -387,8 +414,8 @@
       .item-row { grid-template-columns: 1fr auto; }
       .item-row > div:nth-child(1) { grid-column: 1; grid-row: 1; }
       .item-row .i-row-actions { grid-column: 2; grid-row: 1; }
-      .item-row .i-cell-target { grid-column: 1; grid-row: 2; }
-      .item-row > div:nth-child(3) { grid-column: 2; grid-row: 2; justify-self: end; }
+      .item-row .i-cell-deal { grid-column: 1; grid-row: 2; }
+      .item-row .i-cell-target { grid-column: 2; grid-row: 2; justify-self: end; }
       .verdict { padding: 18px; }
       .verdict .v-right { align-items: flex-start; text-align: left; width: 100%; flex-direction: row; align-items: center; justify-content: space-between; }
     }
@@ -411,6 +438,7 @@
     <nav class="row">
       {% if user %}
         <a href="/app">Wishlist</a>
+        <a href="/app/marketplace">Browse</a>
         <a href="/app/ops">Ops</a>
         <form method="post" action="/logout" style="margin:0">
           <button class="secondary" type="submit">Log out</button>
