@@ -91,6 +91,66 @@ def test_meshy_download(tmp_path, monkeypatch):
     assert (tmp_path / "x.glb").read_bytes() == b"GLBDATA"
 
 
+def test_run_generation_happy_path(db, monkeypatch, tmp_path):
+    from core import meshy
+    from workers.model3d import run_generation
+
+    tp = _product(db)
+    row = ProductModel3D(tracked_product_id=tp.id, source_image_url="http://i/x.jpg")
+    db.add(row)
+    db.commit()
+
+    monkeypatch.setattr("workers.model3d._storage_dir", lambda: tmp_path)
+    monkeypatch.setattr(
+        "workers.model3d.meshy.create_image_to_3d_task", lambda url, client=None: "t1"
+    )
+    monkeypatch.setattr(
+        "workers.model3d.meshy.get_task",
+        lambda tid, client=None: meshy.MeshyTask(
+            status="SUCCEEDED",
+            model_urls={"glb": "http://m/x.glb", "usdz": "http://m/x.usdz"},
+        ),
+    )
+    monkeypatch.setattr(
+        "workers.model3d.meshy.download_file",
+        lambda url, dest, client=None: dest.write_bytes(b"x"),
+    )
+    run_generation(db, row)
+    db.commit()
+    assert row.status == "ready"
+    assert row.glb_path == f"{tp.id}.glb"
+    assert row.usdz_path == f"{tp.id}.usdz"
+    assert (tmp_path / f"{tp.id}.glb").exists()
+
+
+def test_run_generation_provider_failure_marks_failed(db, monkeypatch):
+    from core import meshy
+    from workers.model3d import GenerationFailed, run_generation
+
+    tp = _product(db)
+    row = ProductModel3D(tracked_product_id=tp.id, source_image_url="http://i/x.jpg")
+    db.add(row)
+    db.commit()
+    monkeypatch.setattr(
+        "workers.model3d.meshy.create_image_to_3d_task", lambda url, client=None: "t1"
+    )
+    monkeypatch.setattr(
+        "workers.model3d.meshy.get_task",
+        lambda tid, client=None: meshy.MeshyTask(status="FAILED", error="bad photo"),
+    )
+    with pytest.raises(GenerationFailed):
+        run_generation(db, row)
+    assert row.status == "failed"
+    assert "bad photo" in row.error
+
+
+def test_model3d_event_channel_contract():
+    from core.events import model3d_update_channel, price_update_channel
+
+    assert model3d_update_channel("x") == "model3d_updates:x"
+    assert price_update_channel("x") == "price_updates:x"
+
+
 def test_product_model3d_defaults_and_unique(db):
     tp = _product(db)
     row = ProductModel3D(tracked_product_id=tp.id, source_image_url="http://i/x.jpg")
