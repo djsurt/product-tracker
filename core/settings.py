@@ -50,6 +50,14 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     anthropic_vision_model: str = "claude-haiku-4-5"
 
+    # --- 3D/AR previews (Phase 10) ---
+    # Meshy image-to-3D key; the whole feature is dark until it's set.
+    meshy_api_key: str | None = None
+    meshy_base_url: str = "https://api.meshy.ai"
+    # Hard monthly generation cap, sized to Meshy's free tier.
+    model3d_monthly_cap: int = 8
+    model3d_storage_dir: str = "./model3d"
+
     # --- Scraper (Phase 5) ---
     # Off by default; set SCRAPER_ENABLED=true to add it as a live source. It
     # scrapes HTML, defaulting to our own mock store's /html pages.
