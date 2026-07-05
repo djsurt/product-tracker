@@ -31,6 +31,18 @@ def _product(db):
     return tp
 
 
+def test_model3d_quota_caps(monkeypatch):
+    import fakeredis
+
+    from core.cache import model3d_quota_ok, model3d_quota_spend
+
+    r = fakeredis.FakeRedis(decode_responses=True)
+    assert model3d_quota_ok(client=r, cap=2)
+    model3d_quota_spend(client=r)
+    model3d_quota_spend(client=r)
+    assert not model3d_quota_ok(client=r, cap=2)
+
+
 def test_product_model3d_defaults_and_unique(db):
     tp = _product(db)
     row = ProductModel3D(tracked_product_id=tp.id, source_image_url="http://i/x.jpg")

@@ -119,3 +119,26 @@ def offer_lock(
 def best_deal_payload(**kwargs: Any) -> dict:
     """Tiny helper so callers build the cached dict consistently."""
     return dict(kwargs)
+
+
+# --- 3D generation quota (Phase 10) ----------------------------------------
+def _model3d_month_key() -> str:
+    from datetime import datetime, timezone
+
+    return f"model3d:count:{datetime.now(timezone.utc):%Y-%m}"
+
+
+def model3d_quota_ok(client: redis.Redis | None = None, cap: int | None = None) -> bool:
+    """True if another 3D generation is allowed this calendar month."""
+    r = client or get_redis()
+    limit = cap if cap is not None else get_settings().model3d_monthly_cap
+    used = int(r.get(_model3d_month_key()) or 0)
+    return used < limit
+
+
+def model3d_quota_spend(client: redis.Redis | None = None) -> None:
+    """Count one generation against this month's cap (60d expiry, self-cleaning)."""
+    r = client or get_redis()
+    key = _model3d_month_key()
+    if r.incr(key) == 1:
+        r.expire(key, 60 * 24 * 3600)
