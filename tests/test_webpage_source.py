@@ -10,19 +10,23 @@ import httpx
 import pytest
 
 from sources._http import SourceBlockedError
+from sources.base import ListingGoneError
 from sources.webpage import WebPageSource
 
 
 class FakeClient:
-    def __init__(self, html: str, final_url: str | None = None) -> None:
+    def __init__(
+        self, html: str, final_url: str | None = None, status_code: int = 200
+    ) -> None:
         self.html = html
         self.final_url = final_url
+        self.status_code = status_code
         self.requests: list[str] = []
 
     def get(self, url: str, params: dict | None = None, headers: dict | None = None):
         self.requests.append(url)
         return httpx.Response(
-            200,
+            self.status_code,
             text=self.html,
             request=httpx.Request("GET", self.final_url or url),
         )
@@ -105,6 +109,14 @@ def test_bot_wall_redirect_fails_loudly():
     )
     with pytest.raises(SourceBlockedError):
         WebPageSource(client=blocked).fetch("https://us.shein.com/p-123.html")
+
+
+def test_removed_page_raises_listing_gone():
+    # A 404/410 product page means the listing is gone for good — permanent,
+    # unlike a bot-wall (SourceBlockedError) or a transient 5xx.
+    src = WebPageSource(client=FakeClient("gone", status_code=404))
+    with pytest.raises(ListingGoneError):
+        src.fetch(URL)
 
 
 def test_rejects_non_http_urls():

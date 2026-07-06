@@ -20,7 +20,11 @@ import httpx
 from core.settings import get_settings
 # Shared, guarded money parser (see sources/base.py). Re-exported under the
 # module-local name the adapter tests import.
-from sources.base import NormalizedOffer, parse_price as _parse_price
+from sources.base import (
+    NormalizedOffer,
+    parse_price as _parse_price,
+    raise_if_listing_gone,
+)
 
 _CURRENCY_SYMBOLS = {"$": "USD", "£": "GBP", "€": "EUR"}
 _TITLE_MAX = 255
@@ -73,6 +77,7 @@ class RapidApiProductSource:
             params={"product_id": source_product_id, "country": self.country},
             headers=self._headers(),
         )
+        raise_if_listing_gone(resp)
         resp.raise_for_status()
         data = resp.json().get("data") or {}
         # product-details returns a single product object under `data`.

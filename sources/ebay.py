@@ -17,7 +17,7 @@ import httpx
 
 from core.cache import get_redis
 from core.settings import get_settings
-from sources.base import NormalizedOffer
+from sources.base import NormalizedOffer, raise_if_listing_gone
 
 _TOKEN_CACHE_KEY = "ebay:app_token"
 _SCOPE = "https://api.ebay.com/oauth/api_scope"
@@ -81,6 +81,8 @@ class EbaySource:
             f"{self.base_url}/buy/browse/v1/item/{source_product_id}",
             headers=self._headers(),
         )
+        # An ended/removed listing 404s forever — permanent, not retryable.
+        raise_if_listing_gone(resp)
         resp.raise_for_status()
         return self._to_offer(resp.json())
 

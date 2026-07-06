@@ -33,7 +33,7 @@ from bs4 import BeautifulSoup
 
 from core.settings import get_settings
 from sources._http import PoliteClient, SourceBlockedError
-from sources.base import NormalizedOffer, parse_price
+from sources.base import NormalizedOffer, parse_price, raise_if_listing_gone
 from sources.html_helpers import (
     clean_text,
     first_offer,
@@ -71,6 +71,8 @@ class WebPageSource:
             raise ValueError(f"web: not a valid product URL: {url!r}")
 
         resp = self._http.get(url)
+        # A removed product page (404/410) is permanent; a bot-wall is not.
+        raise_if_listing_gone(resp)
         resp.raise_for_status()
         final_url = str(resp.url)
         if _BLOCK_PATH_RE.search(urlparse(final_url).path):

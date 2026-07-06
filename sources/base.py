@@ -38,6 +38,24 @@ def parse_price(raw: object) -> Decimal | None:
         return None
 
 
+class ListingGoneError(Exception):
+    """The listing no longer exists at the source (ended/removed — HTTP 404/410
+    on a fetch). Permanent, unlike a transient fetch failure: the worker must
+    delist the offer and stop refreshing it, never retry/dead-letter it.
+    """
+
+
+def raise_if_listing_gone(resp) -> None:
+    """Translate an HTTP "this item no longer exists" into ListingGoneError.
+
+    Call before raise_for_status() in any adapter's fetch(): 404/410 on an
+    item-by-id read means the listing is gone for good; every other error status
+    keeps its normal (retryable) meaning.
+    """
+    if resp.status_code in (404, 410):
+        raise ListingGoneError(f"{resp.request.url}: HTTP {resp.status_code}")
+
+
 @dataclass(frozen=True)
 class NormalizedOffer:
     """A source's answer, translated into our internal vocabulary."""
