@@ -28,3 +28,6 @@ celerybeat-schedule*
 *.tfstate.*
 infra/terraform.tfvars
 infra/backend.hcl
+
+# Generated 3D model files (Phase 10)
+model3d/
