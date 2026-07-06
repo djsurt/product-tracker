@@ -116,4 +116,8 @@ class RapidApiProductSource:
             currency=_detect_currency(price_raw),
             url=url[:_URL_MAX],
             available=True,
+            image_url=next(
+                (p for p in product.get("product_photos") or [] if isinstance(p, str)),
+                None,
+            ),
         )

@@ -156,6 +156,7 @@ def svc_search_deals(query: str, sources: list | None = None) -> dict:
                 "currency": o.currency,
                 "url": o.url,
                 "available": o.available,
+                "image_url": o.image_url,
             }
             for o in found
         )

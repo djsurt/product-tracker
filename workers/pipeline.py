@@ -61,12 +61,15 @@ def discover_offers(
                         title=found.title,
                         url=found.url,
                         currency=found.currency,
+                        image_url=found.image_url,
                     )
                 )
             else:
-                # keep mutable metadata fresh (title/url can change upstream)
+                # keep mutable metadata fresh (title/url can change upstream);
+                # never blank an image we already have with a missing one
                 offer.title = found.title
                 offer.url = found.url
+                offer.image_url = found.image_url or offer.image_url
 
     db.flush()
     return list(
@@ -85,6 +88,8 @@ def record_price(db: Session, offer: Offer, observed: NormalizedOffer) -> PriceP
     offer.last_price = observed.price
     offer.last_seen_at = now
     offer.is_available = observed.available
+    if observed.image_url:
+        offer.image_url = observed.image_url
 
     point = PricePoint(offer_id=offer.id, price=observed.price)
     db.add(point)

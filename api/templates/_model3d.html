@@ -1,0 +1,38 @@
+{# 3D/AR preview slot — five states (Phase 10). Included only when enabled. #}
+{% if m3d and m3d.status == "ready" %}
+  <model-viewer src="/app/models/{{ item.id }}.glb"
+                ios-src="/app/models/{{ item.id }}.usdz"
+                alt="Interactive 3D preview of {{ item.title }}"
+                camera-controls auto-rotate ar
+                ar-modes="scene-viewer quick-look webxr"
+                style="width:100%;height:280px;border-radius:12px;">
+  </model-viewer>
+  <p class="hint" style="margin-top:6px;">
+    Drag to spin — or tap the AR badge on your phone to see it in your space.
+    <button class="secondary" style="margin-left:8px;"
+            hx-post="/app/items/{{ item.id }}/model3d"
+            hx-target="#model3d" hx-swap="innerHTML"
+            {% if not m3d_quota_ok %}disabled{% endif %}>Regenerate</button>
+  </p>
+{% elif m3d and m3d.status in ("pending", "generating") %}
+  <div style="text-align:center;padding:24px;" aria-live="polite">
+    <p style="margin:0;">🪄 Sculpting your 3D model… usually about a minute.</p>
+    <div class="skel skel-row" style="margin-top:12px;" aria-hidden="true"></div>
+  </div>
+{% elif m3d and m3d.status == "failed" %}
+  <div style="padding:4px 0;" aria-live="polite">
+    <p style="margin:0 0 8px;">We couldn't sculpt this one — some photos don't cooperate.</p>
+    {% if m3d_quota_ok %}
+    <button class="secondary" hx-post="/app/items/{{ item.id }}/model3d"
+            hx-target="#model3d" hx-swap="innerHTML">Try again</button>
+    {% endif %}
+  </div>
+{% elif not m3d_has_image %}
+  {# No offer photo yet: nothing to generate from, so no button. #}
+  <p class="hint">A 3D preview unlocks once an offer with a product photo arrives.</p>
+{% elif not m3d_quota_ok %}
+  <p class="hint">This month's 3D budget is used up — it resets on the 1st.</p>
+{% else %}
+  <button class="secondary" hx-post="/app/items/{{ item.id }}/model3d"
+          hx-target="#model3d" hx-swap="innerHTML">✨ Generate 3D preview <small>(beta)</small></button>
+{% endif %}

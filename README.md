@@ -43,6 +43,7 @@ Built one phase at a time — each phase is independently runnable and demo-able
 - **Phase 7 — Add from screenshot** ✅ upload a product screenshot; Claude vision (`claude-haiku-4-5`) identifies it into a prefilled wishlist entry (config-gated by `ANTHROPIC_API_KEY`)
 - **Phase 8 — Remote MCP server** ✅ token-authenticated MCP endpoint at `/mcp` (Streamable HTTP); create a token on the dashboard, then let Claude manage your wishlist
 - **Phase 9 — SSE live prices** ✅ item page streams price updates over Server-Sent Events (Redis pub/sub → `/app/items/{id}/stream` → htmx SSE extension) instead of polling
+- **Phase 10 — 3D/AR product previews** ✅ AI-generated 3D model per item (Meshy image-to-3D from the best offer's photo); interactive `<model-viewer>` + phone AR, async Celery generation with live SSE progress (config-gated by `MESHY_API_KEY`)
 
 ## Running locally
 
@@ -211,6 +212,27 @@ httponly session cookie carrying the same JWT the API uses.
 /app                     your wishlist (add / delete items)
 /app/items/{id}          live offers, best deal, price chart, alert rules
 ```
+
+### 3D/AR previews (Phase 10)
+
+Set `MESHY_API_KEY` (free tier at [meshy.ai](https://www.meshy.ai)) and the
+item page gains a **"✨ Generate 3D preview"** button when an offer has a
+product photo. Generation runs as a Celery task (Meshy image-to-3D → download
+`.glb` + `.usdz`), progress streams over the same SSE connection as prices,
+and the interactive viewer swaps in live — on a phone, the AR badge places
+the product in your room via Quick Look / Scene Viewer (no app install).
+
+Cost is bounded by design: one cached model per item (regenerate is explicit),
+a hard monthly cap (`MODEL3D_MONTHLY_CAP`, default 8), and the whole feature is
+dark without the key. Bad photos fail gracefully with a retry. Pre-generate
+demo items so nobody waits:
+
+```bash
+python -m scripts.pregen_models <tracked_product_id> [...]
+```
+
+Files land in `MODEL3D_STORAGE_DIR` (a shared `model3d` volume in prod) and are
+served ownership-checked at `/app/models/{item_id}.glb|.usdz`.
 
 ### Cloud deploy
 

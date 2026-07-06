@@ -1,0 +1,12 @@
+{# Result of a track-by-URL attempt. On success, the OOB div also refreshes the
+   wishlist below so the new item appears without a page reload. #}
+{% if error %}
+<p class="error">{{ error }}</p>
+{% elif already %}
+<p class="hint" style="margin-top:10px;">You’re already tracking this link —
+  <a href="/app/items/{{ item.id }}">view {{ item.title }}</a>.</p>
+{% else %}
+<p class="hint" style="margin-top:10px;">Now tracking <a href="/app/items/{{ item.id }}">{{ item.title }}</a>
+  at <span class="price">${{ price }}</span> — we’re also checking the other stores for it.</p>
+<div id="items" hx-swap-oob="innerHTML">{% include "_items.html" %}</div>
+{% endif %}

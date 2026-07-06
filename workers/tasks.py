@@ -24,12 +24,13 @@ from core import metrics
 from core.cache import RateLimiter, invalidate_best_deal, offer_lock
 from core.db import SessionLocal
 from core.email import send_email
-from core.events import publish_price_update
+from core.events import publish_model3d_update, publish_price_update
 from core.logging import get_logger
-from core.models import TrackedProduct
+from core.models import ProductModel3D, TrackedProduct
 from core.settings import get_settings
 from sources.registry import get_source, get_sources
 from workers.celery_app import celery_app
+from workers.model3d import GenerationFailed, run_generation
 from workers.notifications import fire_alerts
 from workers.pipeline import (
     discover_offers,
@@ -260,5 +261,73 @@ def notify(
             ):
                 raise exc
             return 0
+    finally:
+        db.close()
+
+
+@celery_app.task(bind=True, name="workers.tasks.generate_model3d", max_retries=3)
+def generate_model3d(self, product_model_id: str) -> str:
+    """Generate a 3D preview (Phase 10). Same failure shape as fetch_offer:
+    transient errors retry with backoff, exhausted retries dead-letter.
+    Definitive provider failures ("bad photo") don't retry at all."""
+    db = SessionLocal()
+    tracked_product_id: str | None = None
+    try:
+        row = db.get(ProductModel3D, uuid.UUID(product_model_id))
+        if row is None:
+            return "missing"
+        if row.status == "ready":
+            return "already ready"  # cache-once: never regenerate implicitly
+        tracked_product_id = str(row.tracked_product_id)
+        run_generation(db, row)
+        db.commit()
+        publish_model3d_update(tracked_product_id)
+        metrics.inc("deal_model3d_success_total")
+        log.info("generate_model3d.ok", product_model_id=product_model_id)
+        return "ready"
+    except GenerationFailed:
+        db.commit()  # keep the failed status + error for the retry UI
+        metrics.inc("deal_model3d_failure_total")
+        if tracked_product_id:
+            publish_model3d_update(tracked_product_id)
+        return "failed"
+    except Retry:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        db.rollback()
+        countdown = min(60, settings.fetch_retry_base_seconds * (2**self.request.retries))
+        try:
+            log.warning(
+                "generate_model3d.retry",
+                product_model_id=product_model_id,
+                attempt=self.request.retries,
+                error=repr(exc),
+            )
+            raise self.retry(exc=exc, countdown=countdown)
+        except MaxRetriesExceededError:
+            if not _dead_letter(
+                None, "generate_model3d", exc, self.request.retries,
+                mark_offer_unavailable=False,
+            ):
+                raise exc
+            _mark_model3d_failed(product_model_id, exc)
+            if tracked_product_id:
+                publish_model3d_update(tracked_product_id)
+            return "dead-lettered"
+    finally:
+        db.close()
+
+
+def _mark_model3d_failed(product_model_id: str, exc: Exception) -> None:
+    """Record the failure on the row in a fresh session (ours rolled back)."""
+    db = SessionLocal()
+    try:
+        row = db.get(ProductModel3D, uuid.UUID(product_model_id))
+        if row is not None:
+            row.status = "failed"
+            row.error = repr(exc)
+            db.commit()
+    except Exception:  # noqa: BLE001
+        db.rollback()
     finally:
         db.close()

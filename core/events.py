@@ -30,3 +30,21 @@ def publish_price_update(
         )
     except Exception:  # noqa: BLE001
         log.warning("price_update_publish_failed", tracked_product_id=tracked_product_id)
+
+
+def model3d_update_channel(tracked_product_id: str) -> str:
+    return f"model3d_updates:{tracked_product_id}"
+
+
+def publish_model3d_update(
+    tracked_product_id: str, client: redis.Redis | None = None
+) -> None:
+    """Announce that a product's 3D model status changed. Best-effort."""
+    try:
+        (client or get_redis()).publish(
+            model3d_update_channel(tracked_product_id), tracked_product_id
+        )
+    except Exception:  # noqa: BLE001
+        log.warning(
+            "model3d_update_publish_failed", tracked_product_id=tracked_product_id
+        )

@@ -108,6 +108,9 @@ class Offer(Base):
     source_product_id: Mapped[str] = mapped_column(String(255))
     title: Mapped[str] = mapped_column(String(255))
     url: Mapped[str] = mapped_column(String(1024))
+    # Product image from the source (API field or page structured data), for
+    # the storefront feel. Nullable: not every source/page provides one.
+    image_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     currency: Mapped[str] = mapped_column(String(3), default="USD")
 
     # Denormalized "latest" snapshot for cheap reads. The authoritative log is
@@ -241,3 +244,29 @@ class ApiToken(Base):
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     last_used_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+
+class ProductModel3D(Base):
+    """AI-generated 3D preview for a tracked product (Phase 10).
+
+    One row per product (unique FK) — that row IS the cache-once guarantee.
+    Model files live on disk under MODEL3D_STORAGE_DIR; rows hold paths only.
+    """
+
+    __tablename__ = "product_models"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tracked_product_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tracked_products.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    provider: Mapped[str] = mapped_column(String(20), default="meshy")
+    provider_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source_image_url: Mapped[str] = mapped_column(String(1024))
+    glb_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    usdz_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), onupdate=func.now()
+    )

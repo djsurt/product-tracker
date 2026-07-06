@@ -49,6 +49,8 @@ class NormalizedOffer:
     currency: str
     url: str                  # where a buyer would go
     available: bool
+    # Optional product image. Defaulted so existing adapters keep working.
+    image_url: str | None = None
 
 
 @runtime_checkable

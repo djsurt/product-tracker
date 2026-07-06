@@ -22,6 +22,10 @@ services:
     restart: unless-stopped
     command: uvicorn api.main:app --host 0.0.0.0 --port 8000
     env_file: .env
+    environment:
+      MODEL3D_STORAGE_DIR: /data/model3d
+    volumes:
+      - model3d:/data/model3d
     expose:
       - "8000"
 
@@ -30,6 +34,10 @@ services:
     restart: unless-stopped
     command: celery -A workers.celery_app worker --loglevel=info --concurrency=2
     env_file: .env
+    environment:
+      MODEL3D_STORAGE_DIR: /data/model3d
+    volumes:
+      - model3d:/data/model3d
 
   beat:
     image: ${ECR_IMAGE}
@@ -40,3 +48,5 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+  # Generated 3D model files (glb/usdz) — written by worker, served by web.
+  model3d:

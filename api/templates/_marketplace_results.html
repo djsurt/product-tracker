@@ -1,0 +1,47 @@
+{# Live marketplace search results. Sorted by price ascending — the first row
+   is the cheapest and gets the same highlight as the best offer on item pages. #}
+{% if results %}
+  {% if failed_sources %}
+    <p class="hint">{{ failed_sources | join(", ") }} didn’t respond — showing everything else.</p>
+  {% endif %}
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Source</th><th>Title</th><th>Price</th><th></th><th></th></tr></thead>
+    <tbody>
+      {% for r in results %}
+      <tr {% if loop.first %}class="is-best"{% endif %}>
+        <td style="font-weight:600;">{{ r.source }}</td>
+        <td class="muted">
+          <span class="with-thumb" style="gap:10px;">
+            {% with img = r.image_url, size = 'thumb-sm' %}{% include "_thumb.html" %}{% endwith %}
+            <span>{{ r.title }}</span>
+          </span>
+        </td>
+        <td class="price">${{ "%.2f" | format(r.price) }}
+          {% if loop.first %}<span class="badge below_target" style="margin-left:6px;">cheapest</span>{% endif %}</td>
+        <td>{% if r.url %}<a href="{{ r.url }}" target="_blank" rel="noopener">View →</a>{% endif %}</td>
+        <td style="text-align:right;">
+          <form hx-post="/app/marketplace/track" hx-swap="outerHTML" style="margin:0;display:inline;">
+            <input type="hidden" name="title" value="{{ r.title }}">
+            <input type="hidden" name="query" value="{{ query }}">
+            <button class="secondary" type="submit">Track</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="hint">Tracking adds “{{ query }}” to your wishlist — we’ll keep watching all of these prices for you.</p>
+{% elif query %}
+<div class="empty">
+  <svg class="empty-illo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"/>
+    <path d="M21 21l-4.35-4.35"/>
+    <path d="M8.5 11h5" stroke-width="1.3"/>
+  </svg>
+  <strong>No offers found for “{{ query }}”</strong>
+  Try fewer or more general words — store search is fussier than you’d hope.
+</div>
+{% endif %}

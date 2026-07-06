@@ -8,6 +8,7 @@
 {% set vclass, vheadline = verdict_copy.get(deal.verdict, ("none", deal.verdict | replace("_", " "))) %}
 
 <div class="verdict {{ vclass }}">
+  {% with img = item_image, size = 'thumb-lg' %}{% include "_thumb.html" %}{% endwith %}
   <div class="v-main">
     <div class="v-label">Best deal</div>
     {% if deal.best_price is not none %}
@@ -16,6 +17,9 @@
       <div class="v-price price muted">—</div>
     {% endif %}
     <div class="v-headline">{{ vheadline }}</div>
+    {% if item.target_price is not none and deal.best_price is not none and deal.best_price < item.target_price %}
+      <div class="v-meta"><span class="price" style="color:var(--good);">${{ item.target_price - deal.best_price }}</span> under your ${{ item.target_price }} target</div>
+    {% endif %}
     {% if deal.lowest_in_window is not none %}
       <div class="v-meta">Lowest in {{ deal.window_days }} days: <span class="price">${{ deal.lowest_in_window }}</span></div>
     {% endif %}
@@ -34,14 +38,20 @@
 {% if offers %}
 <div class="table-wrap" style="margin-top:14px;">
 <table>
-  <thead><tr><th>Source</th><th>Title</th><th>Price</th><th>Stock</th><th></th></tr></thead>
+  <thead><tr><th>Source</th><th>Title</th><th>Price</th><th>Stock</th><th>Checked</th><th></th></tr></thead>
   <tbody>
     {% for o in offers %}
     <tr {% if deal.best_offer_id and o.id == deal.best_offer_id %}class="is-best"{% endif %}>
       <td style="font-weight:600;">{{ o.source }}</td>
-      <td class="muted">{{ o.title }}</td>
+      <td class="muted">
+        <span class="with-thumb" style="gap:10px;">
+          {% with img = o.image_url, size = 'thumb-sm' %}{% include "_thumb.html" %}{% endwith %}
+          <span>{{ o.title }}</span>
+        </span>
+      </td>
       <td class="price">{% if o.last_price is not none %}${{ o.last_price }}{% else %}—{% endif %}</td>
       <td>{% if o.is_available %}<span class="badge active">in stock</span>{% else %}<span class="badge no_data">stale</span>{% endif %}</td>
+      <td class="muted" style="white-space:nowrap;">{{ o.last_seen_at | reltime }}</td>
       <td style="text-align:right;">
         {% if o.url %}<a href="/go/{{ o.id }}" target="_blank" rel="noopener">Buy →</a>{% endif %}
       </td>
