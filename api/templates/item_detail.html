@@ -43,6 +43,27 @@
   </div>
 </div>
 
+{% if m3d_enabled %}
+<script type="module" src="/static/model-viewer.min.js"></script>
+<script>
+  // Accessibility: honor prefers-reduced-motion for the 3D auto-rotate.
+  // Applies to viewers swapped in later too (SSE), via a mutation observer.
+  (function () {
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var strip = function (root) {
+      (root.querySelectorAll ? root.querySelectorAll('model-viewer[auto-rotate]') : [])
+        .forEach(function (v) { v.removeAttribute('auto-rotate'); });
+    };
+    strip(document);
+    new MutationObserver(function (muts) {
+      muts.forEach(function (m) { m.addedNodes.forEach(function (n) {
+        if (n.nodeType === 1) strip(n);
+      }); });
+    }).observe(document.body, { childList: true, subtree: true });
+  })();
+</script>
+{% endif %}
+
 <div class="card">
   <h2>Price alerts</h2>
   <p class="hint" style="margin-top:-6px;margin-bottom:14px;">Get an email the moment a price hits your number.</p>

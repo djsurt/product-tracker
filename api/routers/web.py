@@ -905,8 +905,9 @@ async def item_stream(request: Request, item_id: uuid.UUID):
     r = _aioredis()
     pubsub = r.pubsub()
     channel = price_update_channel(str(item_id))
+    m3d_channel = model3d_update_channel(str(item_id))
     try:
-        await pubsub.subscribe(channel)
+        await pubsub.subscribe(channel, m3d_channel)
     except Exception:  # noqa: BLE001 - Redis down: the page still works statically
         await r.aclose()
         raise HTTPException(
@@ -927,12 +928,18 @@ async def item_stream(request: Request, item_id: uuid.UUID):
                 if msg is None:
                     yield ": keep-alive\n\n"  # comment frame; proxies stay open
                     continue
-                html = await anyio.to_thread.run_sync(
-                    partial(_render_offers_html, item_id)
-                )
-                yield _sse_frame("offers", html)
+                if msg.get("channel") == m3d_channel:
+                    html = await anyio.to_thread.run_sync(
+                        partial(_render_model3d_html, item_id)
+                    )
+                    yield _sse_frame("model3d", html)
+                else:
+                    html = await anyio.to_thread.run_sync(
+                        partial(_render_offers_html, item_id)
+                    )
+                    yield _sse_frame("offers", html)
         finally:
-            await pubsub.unsubscribe(channel)
+            await pubsub.unsubscribe(channel, m3d_channel)
             await pubsub.aclose()
             await r.aclose()
 

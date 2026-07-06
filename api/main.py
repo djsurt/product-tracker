@@ -6,8 +6,10 @@ Run locally with: uvicorn api.main:app --reload
 """
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import Depends, FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from api import mcp_server
 from api.deps import get_current_user
@@ -42,6 +44,13 @@ app.include_router(wishlist.router)
 app.include_router(redirect.router)
 app.include_router(web.router)
 app.add_middleware(mcp_server.McpPathASGI)
+
+# Vendored front-end assets (model-viewer). Self-hosted, never hot-linked.
+app.mount(
+    "/static",
+    StaticFiles(directory=str(Path(__file__).resolve().parent / "static")),
+    name="static",
+)
 
 
 @app.get("/")
