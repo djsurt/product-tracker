@@ -52,7 +52,8 @@ def create_image_to_3d_task(image_url: str, client: httpx.Client | None = None) 
             "target_formats": ["glb", "usdz"],
         },
     )
-    if resp.status_code != 200:
+    # Meshy answers 202 Accepted (task queued); accept any 2xx.
+    if not resp.is_success:
         raise MeshyError(f"create failed: {resp.status_code} {resp.text[:200]}")
     task_id = resp.json().get("result")
     if not task_id:

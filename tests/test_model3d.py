@@ -77,6 +77,21 @@ def test_meshy_create_and_poll(monkeypatch):
     assert task.model_urls["glb"].endswith(".glb")
 
 
+def test_meshy_create_accepts_202(monkeypatch):
+    # The live API returns 202 Accepted (not 200) when it queues the job.
+    import httpx
+
+    from core import meshy
+
+    monkeypatch.setattr(meshy, "_api_key", lambda: "k")
+
+    def handler(request):
+        return httpx.Response(202, json={"result": "task-202"})
+
+    task_id = meshy.create_image_to_3d_task("http://i/x.jpg", client=_mock_http(handler))
+    assert task_id == "task-202"
+
+
 def test_meshy_download(tmp_path, monkeypatch):
     import httpx
 
