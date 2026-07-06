@@ -168,6 +168,14 @@ They appear as `ebay_scraper` and `shein_scraper`. They use public HTML pages,
 parse only the fields needed for price tracking, and are intentionally disabled
 by default because live marketplace markup and anti-bot behavior can change.
 
+**Delisted offers.** When a source answers 404/410 for a known listing (an
+ended eBay auction, a removed product page), that's a permanent fact, not a
+transient failure: the adapter raises `ListingGoneError` and the worker marks
+the offer `is_delisted` immediately — no retries, no dead-letter — so the sweep
+stops re-fetching a listing that can never come back. Its price history stays
+for charts, and if a source's search ever returns the same listing id again,
+discovery un-delists it.
+
 **Dead-letter queue.** When `fetch_offer` (or `notify`) exhausts its retries, it
 doesn't fail forever or vanish — it parks a row in `dead_letters` and marks the
 offer stale (`is_available=false`) so its bad price isn't trusted. Inspect with:

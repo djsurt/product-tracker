@@ -5,9 +5,20 @@ representative API responses — no network, no credentials needed.
 
 from decimal import Decimal
 
+import httpx
+import pytest
+
+from sources.base import ListingGoneError
 from sources.bestbuy import BestBuySource
 from sources.ebay import EbaySource
 from sources.rapidapi import RapidApiProductSource, _parse_price
+
+
+def _client(status_code: int, json_body: dict | None = None) -> httpx.Client:
+    def handler(request):
+        return httpx.Response(status_code, json=json_body or {})
+
+    return httpx.Client(transport=httpx.MockTransport(handler))
 
 
 def test_ebay_to_offer():
@@ -34,6 +45,37 @@ def test_ebay_out_of_stock():
         "estimatedAvailabilities": [{"estimatedAvailabilityStatus": "OUT_OF_STOCK"}],
     }
     assert EbaySource()._to_offer(item).available is False
+
+
+@pytest.mark.parametrize("status", [404, 410])
+def test_ebay_fetch_gone_listing_raises_listing_gone(monkeypatch, status):
+    # An ended/removed eBay listing 404s forever — the adapter must surface that
+    # as the permanent ListingGoneError, not a retryable HTTP error.
+    monkeypatch.setattr(EbaySource, "_headers", lambda self: {})
+    src = EbaySource(client=_client(status))
+    with pytest.raises(ListingGoneError):
+        src.fetch("v1|147409449633|0")
+
+
+def test_ebay_fetch_server_error_stays_retryable(monkeypatch):
+    # A 5xx is transient: it must keep raising HTTPStatusError so the worker's
+    # retry/backoff/dead-letter ladder still applies.
+    monkeypatch.setattr(EbaySource, "_headers", lambda self: {})
+    src = EbaySource(client=_client(503))
+    with pytest.raises(httpx.HTTPStatusError):
+        src.fetch("v1|147409449633|0")
+
+
+def test_bestbuy_fetch_gone_listing_raises_listing_gone():
+    src = BestBuySource(client=_client(404))
+    with pytest.raises(ListingGoneError):
+        src.fetch("6427814")
+
+
+def test_rapidapi_fetch_gone_listing_raises_listing_gone():
+    src = RapidApiProductSource(client=_client(404))
+    with pytest.raises(ListingGoneError):
+        src.fetch("catalogid:123")
 
 
 def test_bestbuy_to_offer():

@@ -70,11 +70,19 @@ def discover_offers(
                 offer.title = found.title
                 offer.url = found.url
                 offer.image_url = found.image_url or offer.image_url
+                # The source's own search just returned this listing id, which
+                # proves it exists again — undo a delisting (e.g. relisted item).
+                offer.is_delisted = False
 
     db.flush()
+    # Delisted offers are excluded so the sweep never enqueues fetches for
+    # listings the source already told us are gone (they'd 404 every cycle).
     return list(
         db.scalars(
-            select(Offer).where(Offer.tracked_product_id == tracked_product.id)
+            select(Offer).where(
+                Offer.tracked_product_id == tracked_product.id,
+                Offer.is_delisted.is_(False),
+            )
         )
     )
 
@@ -95,6 +103,19 @@ def record_price(db: Session, offer: Offer, observed: NormalizedOffer) -> PriceP
     db.add(point)
     db.flush()
     return point
+
+
+def mark_offer_delisted(db: Session, offer: Offer) -> None:
+    """The source says this listing no longer exists (404/410 on fetch).
+
+    Terminal, unlike the is_available=False that record_dead_letter applies:
+    discover_offers stops returning the offer, so the sweep never fetches it
+    again. The row and its price history survive for charts/audit, and the
+    offer revives only if the source's search returns the same listing id.
+    """
+    offer.is_delisted = True
+    offer.is_available = False  # best-deal must not trust a dead listing's price
+    db.flush()
 
 
 def get_offer(db: Session, offer_id: str | uuid.UUID) -> Offer | None:

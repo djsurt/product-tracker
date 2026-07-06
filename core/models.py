@@ -118,6 +118,10 @@ class Offer(Base):
     last_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     last_seen_at: Mapped[datetime | None] = mapped_column(nullable=True)
     is_available: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Permanently gone at the source (404/410 on fetch): the sweep stops
+    # refreshing it. Distinct from is_available=False, which only means "last
+    # price untrusted" and is revived by the next successful fetch.
+    is_delisted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     tracked_product: Mapped[TrackedProduct] = relationship(back_populates="offers")

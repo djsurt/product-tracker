@@ -28,6 +28,7 @@ from core.events import publish_model3d_update, publish_price_update
 from core.logging import get_logger
 from core.models import ProductModel3D, TrackedProduct
 from core.settings import get_settings
+from sources.base import ListingGoneError
 from sources.registry import get_source, get_sources
 from workers.celery_app import celery_app
 from workers.model3d import GenerationFailed, run_generation
@@ -35,6 +36,7 @@ from workers.notifications import fire_alerts
 from workers.pipeline import (
     discover_offers,
     get_offer,
+    mark_offer_delisted,
     record_dead_letter,
     record_price,
 )
@@ -184,6 +186,22 @@ def fetch_offer(self, offer_id: str) -> str | None:
             )
         return str(observed.price)
 
+    except ListingGoneError as exc:
+        # The source says the listing no longer exists (e.g. eBay 404 on an
+        # ended item). That's a permanent business fact, not an operational
+        # failure: no retries, no dead-letter. Delist the offer so the sweep
+        # stops re-enqueueing it every cycle.
+        db.rollback()
+        offer = get_offer(db, offer_id)
+        if offer is not None:
+            mark_offer_delisted(db, offer)
+            db.commit()
+        metrics.inc("deal_fetch_gone_total")
+        log.info("fetch_offer.gone", offer_id=offer_id, error=repr(exc))
+        if tracked_product_id is not None:
+            invalidate_best_deal(tracked_product_id)
+            publish_price_update(tracked_product_id)  # page re-renders offers
+        return "gone: delisted"
     except Retry:
         raise  # let Celery handle the scheduled retry; don't treat as failure
     except Exception as exc:  # noqa: BLE001

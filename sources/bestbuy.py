@@ -13,7 +13,7 @@ from urllib.parse import quote_plus
 import httpx
 
 from core.settings import get_settings
-from sources.base import NormalizedOffer
+from sources.base import NormalizedOffer, raise_if_listing_gone
 
 _SHOW = "sku,name,salePrice,url,onlineAvailability"
 
@@ -46,6 +46,7 @@ class BestBuySource:
             f"{self.base_url}/products/{source_product_id}.json",
             params={"apiKey": self.api_key, "show": _SHOW},
         )
+        raise_if_listing_gone(resp)
         resp.raise_for_status()
         return self._to_offer(resp.json())
 
