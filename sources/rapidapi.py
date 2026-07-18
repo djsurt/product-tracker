@@ -24,6 +24,7 @@ from sources.base import (
     NormalizedOffer,
     parse_price as _parse_price,
     raise_if_listing_gone,
+    raise_if_rate_limited,
 )
 
 _CURRENCY_SYMBOLS = {"$": "USD", "£": "GBP", "€": "EUR"}
@@ -62,6 +63,7 @@ class RapidApiProductSource:
             params={"q": query, "country": self.country, "limit": 3},
             headers=self._headers(),
         )
+        raise_if_rate_limited(resp)
         resp.raise_for_status()
         products = self._products(resp.json())
         offers: list[NormalizedOffer] = []
@@ -78,6 +80,7 @@ class RapidApiProductSource:
             headers=self._headers(),
         )
         raise_if_listing_gone(resp)
+        raise_if_rate_limited(resp)
         resp.raise_for_status()
         data = resp.json().get("data") or {}
         # product-details returns a single product object under `data`.

@@ -28,7 +28,7 @@ from core.events import publish_model3d_update, publish_price_update
 from core.logging import get_logger
 from core.models import ProductModel3D, TrackedProduct
 from core.settings import get_settings
-from sources.base import ListingGoneError
+from sources.base import ListingGoneError, RateLimitedError
 from sources.registry import get_source, get_sources
 from workers.celery_app import celery_app
 from workers.model3d import GenerationFailed, run_generation
@@ -202,6 +202,16 @@ def fetch_offer(self, offer_id: str) -> str | None:
             invalidate_best_deal(tracked_product_id)
             publish_price_update(tracked_product_id)  # page re-renders offers
         return "gone: delisted"
+    except RateLimitedError as exc:
+        # The source is throttling us (HTTP 429). Retrying now — let alone the
+        # normal 5x exponential burst — is exactly what keeps a free-tier key
+        # permanently over budget. Treat it as backpressure: drop this cycle
+        # cleanly (no retry, no dead-letter) and let the next scheduled sweep try
+        # again once the source's budget has recovered.
+        db.rollback()
+        metrics.inc("deal_fetch_rate_limited_total")
+        log.warning("fetch_offer.rate_limited", offer_id=offer_id, error=repr(exc))
+        return "skipped: rate-limited"
     except Retry:
         raise  # let Celery handle the scheduled retry; don't treat as failure
     except Exception as exc:  # noqa: BLE001
