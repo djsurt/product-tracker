@@ -31,3 +31,5 @@ infra/backend.hcl
 
 # Generated 3D model files (Phase 10)
 model3d/
+
+docs/demo-script.md

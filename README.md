@@ -3,11 +3,6 @@
 Build a wishlist of products, track their prices across the internet, and get
 alerted + redirected when the best deal appears.
 
-This is a learning project: the architecture is intentionally chosen to exercise
-core system-design concepts (async job queues, scheduling, caching, time-series
-data, event-driven notifications, reliability). See
-`~/.claude/plans/i-want-to-build-sequential-quail.md` for the full plan.
-
 ## Stack
 
 - **API:** FastAPI + SQLAlchemy 2.0 + Alembic
