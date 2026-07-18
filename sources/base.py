@@ -45,6 +45,16 @@ class ListingGoneError(Exception):
     """
 
 
+class RateLimitedError(Exception):
+    """The source is refusing us for now because we're over its rate/quota
+    budget (HTTP 429). Unlike a normal fetch failure this is NOT retryable in the
+    usual sense: retrying immediately just deepens the hole and keeps us throttled
+    (the classic self-inflicted 429 storm). The worker treats it as backpressure
+    — skip this cycle, no exponential-retry burst, no dead-letter — and lets the
+    next scheduled sweep try again once budget has recovered.
+    """
+
+
 def raise_if_listing_gone(resp) -> None:
     """Translate an HTTP "this item no longer exists" into ListingGoneError.
 
@@ -54,6 +64,18 @@ def raise_if_listing_gone(resp) -> None:
     """
     if resp.status_code in (404, 410):
         raise ListingGoneError(f"{resp.request.url}: HTTP {resp.status_code}")
+
+
+def raise_if_rate_limited(resp) -> None:
+    """Translate an HTTP 429 into RateLimitedError.
+
+    Call before raise_for_status() in any adapter's search()/fetch(): a 429 means
+    "you're over budget, back off" — hammering it with immediate retries is what
+    keeps a free-tier key permanently throttled. Surfacing a distinct exception
+    lets the worker apply backpressure instead of its normal retry storm.
+    """
+    if resp.status_code == 429:
+        raise RateLimitedError(f"{resp.request.url}: HTTP 429 Too Many Requests")
 
 
 @dataclass(frozen=True)

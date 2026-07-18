@@ -36,6 +36,10 @@ services:
     env_file: .env
     environment:
       MODEL3D_STORAGE_DIR: /data/model3d
+      # Free-tier price-source APIs (eBay Browse, RapidAPI) throttle hard. Keep
+      # our call volume gentle so a background sweep never blows their quota and
+      # 429s every real request. See REFRESH_INTERVAL_SECONDS on beat below.
+      SOURCE_RATE_LIMIT_PER_SEC: "1"
     volumes:
       - model3d:/data/model3d
 
@@ -44,6 +48,12 @@ services:
     restart: unless-stopped
     command: celery -A workers.celery_app beat --loglevel=info
     env_file: .env
+    environment:
+      # Sweep every 30 min, not every 30s. A personal price tracker needs only a
+      # handful of checks per item per day; a tight cadence just exhausts the
+      # free-tier source quotas and leaves every item stuck on "checking…".
+      REFRESH_INTERVAL_SECONDS: "1800"
+      SOURCE_RATE_LIMIT_PER_SEC: "1"
 
 volumes:
   caddy_data:
