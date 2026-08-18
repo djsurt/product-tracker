@@ -98,3 +98,41 @@ def test_artifact_has_no_external_runtime_dependencies():
     assert "XMLHttpRequest" not in html
     assert "@import" not in html
     assert "analytics" not in html.lower()
+
+
+def test_required_visuals_and_text_alternatives_exist():
+    parser, html = parse_course()
+    for visual_id in (
+        "architecture-visual", "refresh-visual", "entity-visual",
+        "failure-visual", "aws-visual", "scaling-visual",
+    ):
+        assert visual_id in parser.ids
+    assert html.count('class="visual-caption"') >= 6
+    assert 'role="img"' in html or "<figure" in html
+
+
+def test_accessible_responsive_and_print_styles_exist():
+    _, html = parse_course()
+    for token in (
+        ":focus-visible",
+        "@media (max-width: 760px)",
+        "@media (prefers-reduced-motion: reduce)",
+        "@media print",
+        ".sr-only",
+        ".skip-link",
+        "color-scheme: light",
+    ):
+        assert token in html
+    assert "overflow-x: auto" in html
+    assert "break-inside: avoid" in html
+
+
+def test_course_has_navigation_and_progressive_disclosure():
+    parser, html = parse_course()
+    for element_id in (
+        "course-header", "desktop-syllabus", "mobile-syllabus",
+        "course-content", "course-finish", "course-live-region",
+    ):
+        assert element_id in parser.ids
+    assert html.count('class="deep-dive"') >= 6
+    assert html.count('class="model-answer"') >= 15

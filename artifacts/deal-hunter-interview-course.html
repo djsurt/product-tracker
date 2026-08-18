@@ -5,16 +5,131 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Deal Hunter Interview Course</title>
   <style>
-    :root { color-scheme: light dark; font-family: system-ui, sans-serif; line-height: 1.55; }
-    body { max-width: 76rem; margin: 0 auto; padding: 1.25rem; }
-    header, nav, article, footer { margin-block: 1.5rem; }
-    .course-module { border-top: 1px solid currentColor; padding-top: 1.5rem; }
-    .module-kicker, .module-objective, .module-summary { max-width: 68ch; }
-    .knowledge-check { border-inline-start: .3rem solid currentColor; padding-inline-start: 1rem; }
+    :root {
+      color-scheme: light;
+      --navy-950: #0b1f33;
+      --navy-800: #173b5e;
+      --slate-700: #40566d;
+      --slate-300: #c6d0da;
+      --cream-100: #fbf7ed;
+      --cream-200: #f1eadb;
+      --paper: #fffdf8;
+      --orange-600: #b84c1b;
+      --orange-100: #fff0df;
+      --green-700: #1f664c;
+      --green-100: #e5f3ec;
+      --ink: #17212b;
+      --shadow: 0 18px 45px rgb(11 31 51 / 10%);
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      line-height: 1.6;
+      scroll-behavior: smooth;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--cream-100); }
+    a { color: var(--navy-800); text-underline-offset: .18em; }
+    a:hover { color: var(--orange-600); }
+    code { padding: .08em .3em; border-radius: .2rem; background: var(--cream-200); color: var(--navy-950); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em; }
+    button, summary { font: inherit; }
+    button { border: 1px solid var(--navy-950); border-radius: .25rem; padding: .65rem .9rem; color: var(--paper); background: var(--navy-950); cursor: pointer; transition: background-color .16s ease, transform .16s ease; }
+    button:hover { background: var(--navy-800); }
+    button:active { transform: translateY(1px); background: var(--orange-600); }
+    button:disabled { cursor: not-allowed; opacity: .5; }
+    :focus-visible { outline: .2rem solid var(--orange-600); outline-offset: .18rem; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-    .skip-link:focus { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; white-space: normal; }
-    nav ul { columns: 2; }
-    button { font: inherit; padding: .5rem .75rem; }
+    .skip-link { position: absolute; inset: .75rem auto auto .75rem; z-index: 10; padding: .6rem .8rem; color: var(--paper); background: var(--navy-950); }
+    .skip-link:focus, .skip-link:focus-visible { width: auto; height: auto; margin: 0; overflow: visible; clip: auto; white-space: normal; }
+
+    #course-header { padding: clamp(2rem, 5vw, 4.5rem) max(1.25rem, calc((100vw - 76rem) / 2)); color: var(--paper); background: radial-gradient(circle at 85% 15%, rgb(184 76 27 / 38%), transparent 22rem), linear-gradient(120deg, var(--navy-950), var(--navy-800)); }
+    #course-header > * { max-width: 66rem; margin-inline: auto; }
+    #course-header h1 { max-width: 17ch; margin-block: .15rem .65rem; font-size: clamp(2.3rem, 6vw, 4.8rem); line-height: .98; letter-spacing: -.045em; }
+    #course-header p { max-width: 66ch; }
+    #course-header progress { width: min(22rem, 100%); accent-color: var(--orange-600); }
+    #course-header button + button { margin-inline-start: .45rem; }
+
+    .course-shell { display: grid; grid-template-columns: 17rem minmax(0, 54rem); gap: clamp(1.5rem, 4vw, 4rem); width: min(100% - 2.5rem, 76rem); margin: 2rem auto 4rem; align-items: start; }
+    .course-sidebar { position: sticky; top: 1rem; padding: 1.1rem; border: 1px solid var(--slate-300); border-radius: .5rem; background: var(--paper); box-shadow: 0 .5rem 1.4rem rgb(11 31 51 / 6%); }
+    .course-sidebar h2 { margin-top: 0; color: var(--navy-950); font-size: 1.05rem; }
+    .course-sidebar ul { display: grid; gap: .35rem; padding: 0; margin: 0; list-style: none; }
+    .course-sidebar a { display: grid; gap: .05rem; padding: .4rem; border-radius: .25rem; text-decoration: none; font-family: ui-sans-serif, system-ui, sans-serif; font-size: .82rem; line-height: 1.25; }
+    .course-sidebar a:hover { background: var(--orange-100); }
+    .syllabus-meta { color: var(--slate-700); font-size: .72rem; }
+    .syllabus-badge { color: var(--green-700); font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+    .lesson-stack { min-width: 0; }
+    #mobile-syllabus { display: none; }
+
+    .course-module { margin-block: 1.35rem; padding: clamp(1.25rem, 3vw, 2.4rem); border: 1px solid var(--slate-300); border-radius: .6rem; background: var(--paper); box-shadow: var(--shadow); }
+    .module-header { margin: -.25rem 0 1.5rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--cream-200); }
+    .module-kicker { margin: 0 0 .35rem; color: var(--orange-600); font-family: ui-sans-serif, system-ui, sans-serif; font-size: .78rem; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
+    .module-header h2 { max-width: 20ch; margin: 0; color: var(--navy-950); font-size: clamp(1.85rem, 4vw, 3rem); line-height: 1.04; letter-spacing: -.035em; }
+    .module-objective { margin-bottom: 0; color: var(--slate-700); font-size: 1.08rem; }
+    .course-module h3 { margin-top: 1.7rem; color: var(--navy-800); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 1.05rem; }
+    .knowledge-check, .module-summary, .callout { margin-block: 1.5rem; padding: .9rem 1rem; border-left: .3rem solid var(--orange-600); background: var(--orange-100); }
+    .module-summary { border-color: var(--green-700); background: var(--green-100); }
+    .knowledge-check h3, .module-summary h3 { margin: 0 0 .35rem; }
+    .knowledge-check p, .module-summary p { margin-bottom: 0; }
+    details { margin-block: .9rem; border: 1px solid var(--slate-300); border-radius: .35rem; background: var(--cream-100); }
+    summary { padding: .75rem .9rem; color: var(--navy-950); font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 700; cursor: pointer; }
+    details > :not(summary) { margin-inline: .9rem; }
+    details > :last-child { margin-bottom: .9rem; }
+    .model-answer[open], .deep-dive[open] { background: var(--paper); }
+    .module-complete { margin-top: .6rem; }
+
+    .visual { margin: 1.75rem 0; padding: 1rem; border: 1px solid var(--slate-300); border-radius: .5rem; background: linear-gradient(135deg, var(--cream-100), var(--paper)); overflow-x: auto; break-inside: avoid; }
+    .visual-grid, .flow-grid, .stage-grid { display: grid; gap: .6rem; min-width: 34rem; }
+    .visual-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: center; }
+    .flow-grid { grid-template-columns: repeat(4, minmax(9rem, 1fr)); }
+    .stage-grid { grid-template-columns: repeat(3, minmax(12rem, 1fr)); }
+    .visual-box { min-height: 4.7rem; padding: .75rem; border: 1px solid var(--navy-800); border-radius: .35rem; color: var(--navy-950); background: var(--paper); font-family: ui-sans-serif, system-ui, sans-serif; font-size: .88rem; font-weight: 700; }
+    .visual-box small { display: block; margin-top: .25rem; color: var(--slate-700); font-weight: 500; }
+    .visual-box.accent { border-color: var(--orange-600); background: var(--orange-100); }
+    .visual-box.future { border-color: var(--green-700); background: var(--green-100); }
+    .connector { align-self: center; color: var(--orange-600); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 1.35rem; font-weight: 800; text-align: center; }
+    .flow-step { position: relative; min-height: 6.25rem; padding: .8rem; border-top: .25rem solid var(--orange-600); background: var(--paper); box-shadow: 0 .25rem .7rem rgb(11 31 51 / 7%); font-family: ui-sans-serif, system-ui, sans-serif; font-size: .85rem; }
+    .flow-step b { display: block; margin-bottom: .25rem; color: var(--orange-600); }
+    .failure-grid { display: grid; grid-template-columns: repeat(2, minmax(15rem, 1fr)); gap: .7rem; min-width: 34rem; }
+    .failure-grid .visual-box { min-height: 7rem; }
+    .entity-chain { display: flex; align-items: stretch; gap: .45rem; min-width: 42rem; }
+    .entity-chain .visual-box { flex: 1; }
+    .supporting-records { display: grid; grid-template-columns: repeat(5, 1fr); gap: .45rem; margin-top: .7rem; min-width: 42rem; }
+    .visual-caption { margin: .85rem 0 0; color: var(--slate-700); font-size: .93rem; }
+    .current-state { color: var(--slate-700); }
+    .future-state { color: var(--green-700); }
+
+    #course-finish { width: min(100% - 2.5rem, 54rem); margin: 0 auto 3rem; padding: 1.5rem; border-top: .35rem solid var(--orange-600); background: var(--cream-200); }
+
+    @media (max-width: 760px) {
+      #course-header { padding: 2rem 1.25rem; }
+      #course-header button { display: block; width: 100%; margin-top: .55rem; }
+      #course-header button + button { margin-inline-start: 0; }
+      .course-shell { display: block; width: min(100% - 1.5rem, 54rem); margin-top: 1rem; }
+      .course-sidebar { display: none; }
+      #mobile-syllabus { display: block; margin-bottom: 1rem; padding: .2rem .8rem; border: 1px solid var(--slate-300); border-radius: .35rem; background: var(--paper); }
+      #mobile-syllabus ul { padding-left: 1.1rem; }
+      .course-module { padding: 1.15rem; }
+      .visual { padding: .75rem; }
+      .visual-grid, .flow-grid, .stage-grid, .failure-grid, .entity-chain, .supporting-records { min-width: 31rem; }
+      .module-complete { width: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      :root { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .skip-link, .course-sidebar, #mobile-syllabus, #course-header section, #course-header button, .module-complete { display: none !important; }
+      #course-header { padding: 0; color: var(--ink); background: none; }
+      #course-header h1 { font-size: 2rem; }
+      .course-shell, #course-finish { display: block; width: 100%; margin: 0; }
+      .course-module { margin: 0 0 1rem; padding: 0; border: 0; box-shadow: none; break-inside: avoid; }
+      .visual, .knowledge-check, .module-summary { break-inside: avoid; }
+      details { border: 0; background: none; }
+      details:not([open]) > :not(summary) { display: block; }
+      a[href^="#"]::after { content: ""; }
+      a[href^="http"]::after { content: " (" attr(href) ")"; font-size: .8em; }
+    }
   </style>
 </head>
 <body>
@@ -35,22 +150,26 @@
     </p>
   </header>
 
+  <div class="course-shell">
+  <aside class="course-sidebar">
   <nav id="desktop-syllabus" aria-label="Course syllabus">
     <h2>Course syllabus</h2>
     <ul>
-      <li><a href="#module-project-story">Module 1: Project story</a></li>
-      <li><a href="#module-system-architecture">Module 2: System architecture</a></li>
-      <li><a href="#module-database-modeling">Module 3: Database modeling</a></li>
-      <li><a href="#module-async-redis">Module 4: Async work and Redis</a></li>
-      <li><a href="#module-reliability">Module 5: Reliability</a></li>
-      <li><a href="#module-api-security-ui">Module 6: API, security, and UI</a></li>
-      <li><a href="#module-ai-mcp">Module 7: AI and MCP</a></li>
-      <li><a href="#module-aws-cicd">Module 8: AWS and CI/CD</a></li>
-      <li><a href="#module-scaling">Module 9: Scaling</a></li>
-      <li><a href="#module-new-grad-fundamentals">Module 10: New-grad fundamentals</a></li>
-      <li><a href="#module-interview-practice">Module 11: Interview practice</a></li>
+      <li><a href="#module-project-story"><span>01 · Project story</span><span class="syllabus-meta">12 min</span><span class="syllabus-badge">To complete</span></a></li>
+      <li><a href="#module-system-architecture"><span>02 · Architecture</span><span class="syllabus-meta">16 min</span><span class="syllabus-badge">To complete</span></a></li>
+      <li><a href="#module-database-modeling"><span>03 · Data model</span><span class="syllabus-meta">14 min</span><span class="syllabus-badge">To complete</span></a></li>
+      <li><a href="#module-async-redis"><span>04 · Async + Redis</span><span class="syllabus-meta">17 min</span><span class="syllabus-badge">To complete</span></a></li>
+      <li><a href="#module-reliability"><span>05 · Reliability</span><span class="syllabus-meta">15 min</span><span class="syllabus-badge">To complete</span></a></li>
+      <li><a href="#module-api-security-ui"><span>06 · API + security</span><span class="syllabus-meta">15 min</span><span class="syllabus-badge">To complete</span></a></li>
+      <li><a href="#module-ai-mcp"><span>07 · AI + MCP</span><span class="syllabus-meta">12 min</span><span class="syllabus-badge">To complete</span></a></li>
+      <li><a href="#module-aws-cicd"><span>08 · AWS + CI/CD</span><span class="syllabus-meta">22 min</span><span class="syllabus-badge">To complete</span></a></li>
+      <li><a href="#module-scaling"><span>09 · Scaling</span><span class="syllabus-meta">15 min</span><span class="syllabus-badge">To complete</span></a></li>
+      <li><a href="#module-new-grad-fundamentals"><span>10 · Fundamentals</span><span class="syllabus-meta">25 min</span><span class="syllabus-badge">To complete</span></a></li>
+      <li><a href="#module-interview-practice"><span>11 · Practice</span><span class="syllabus-meta">20 min</span><span class="syllabus-badge">To complete</span></a></li>
     </ul>
   </nav>
+  </aside>
+  <section class="lesson-stack">
   <details id="mobile-syllabus">
     <summary>Open course syllabus</summary>
     <nav aria-label="Mobile course syllabus">
@@ -92,6 +211,7 @@
         <p><strong>30-second pitch:</strong> “Deal Hunter is a price-tracking wishlist. A FastAPI API stores each user’s products, Celery workers collect offers through a shared source interface, and PostgreSQL keeps price history so the app can show a best deal and send alerts.”</p>
         <p><strong>60-second pitch:</strong> Add that slow provider work is off the request path, Redis coordinates the queue, cache, and locks, and the UI, MCP endpoint, and deployment demonstrate how the same core model can serve several interfaces.</p>
       </section>
+      <details class="deep-dive"><summary>Practice constraint: be precise, not grand</summary><p>A strong interview story names the user, the system boundary, and a trade-off. It does not turn a learning project into an invented production success story.</p></details>
       <section class="knowledge-check" data-check-id="project-story-check">
         <h3>Recall</h3><p>Why did you build it? Answer with the user’s comparison-and-alert problem, then name the technical learning goal rather than claiming unmeasured impact.</p>
       </section>
@@ -109,11 +229,33 @@
         <h3>Responsibility map</h3>
         <p>The browser calls FastAPI. FastAPI authenticates, validates, and persists user intent in PostgreSQL; Redis carries Celery work. Celery Beat schedules sweeps, workers call source adapters, and workers append price observations before notification work can react to a drop.</p>
       </section>
+      <figure id="architecture-visual" class="visual" aria-labelledby="architecture-caption">
+        <div class="visual-grid" role="img" aria-label="Browser and MCP clients reach Caddy and FastAPI. FastAPI reads PostgreSQL and Redis. Redis sends jobs to a Celery worker and pub-sub messages to server-sent events; the worker uses source adapters.">
+          <div class="visual-box">Browser + MCP<small>authenticated clients</small></div><div class="connector">→</div><div class="visual-box accent">Caddy<small>public proxy</small></div>
+          <div class="visual-box">FastAPI<small>validation + API</small></div><div class="connector">↔</div><div class="visual-box">PostgreSQL<small>durable product and price state</small></div>
+          <div class="visual-box">Redis<small>broker, cache, locks, pub/sub</small></div><div class="connector">→</div><div class="visual-box future">Celery worker → source adapters<small>slow provider I/O</small></div>
+          <div class="visual-box">Redis pub/sub</div><div class="connector">→</div><div class="visual-box">SSE<small>one-way browser updates</small></div>
+        </div>
+        <figcaption id="architecture-caption" class="visual-caption">Request work stays on the Browser/MCP → Caddy → FastAPI path. PostgreSQL is durable state; Redis connects background work to Celery and sends publication events to SSE, while adapters isolate provider-specific fetching.</figcaption>
+      </figure>
       <section>
         <h3>Add and refresh flows</h3>
         <p>Adding a product stores a query and enqueues discovery. A source implementation satisfies the <code>PriceSource</code> protocol and returns a <code>NormalizedOffer</code>; discovery upserts the resulting offers. A refresh later fetches a known offer, records a price point, updates its cheap <code>last_price</code> snapshot, and may publish a price-drop event.</p>
         <p>The API stays thin because provider calls are slow and unreliable. Keeping them in workers protects request latency and lets queue retries absorb transient problems.</p>
       </section>
+      <figure id="refresh-visual" class="visual" aria-labelledby="refresh-caption">
+        <div class="flow-grid" role="img" aria-label="An eight-step refresh starts with a stored TrackedProduct, discovers sources and normalized offers, creates fetch tasks, writes a price snapshot and history, invalidates cache, publishes updates, and evaluates alerts.">
+          <div class="flow-step"><b>1 · Stored intent</b>TrackedProduct is ready for a sweep.</div>
+          <div class="flow-step"><b>2 · Discover</b>Search source adapters.</div>
+          <div class="flow-step"><b>3 · Normalize</b>Return NormalizedOffer records.</div>
+          <div class="flow-step"><b>4 · Fetch</b>Queue known-offer tasks.</div>
+          <div class="flow-step"><b>5 · Write</b>Update snapshot and append PricePoint history.</div>
+          <div class="flow-step"><b>6 · Invalidate</b>Drop affected cache-aside keys.</div>
+          <div class="flow-step"><b>7 · Publish</b>Send a Redis event for SSE.</div>
+          <div class="flow-step"><b>8 · Evaluate</b>Check alert thresholds and debounce.</div>
+        </div>
+        <figcaption id="refresh-caption" class="visual-caption">A stored tracked product becomes source discovery, normalized offers, queued fetching, a durable current snapshot plus append-only history, cache invalidation, live publication, and finally alert evaluation.</figcaption>
+      </figure>
       <details class="deep-dive"><summary>Trade-off: one adapter contract</summary><p><code>PriceSource</code> makes mock, API, and scraper adapters interchangeable at the pipeline boundary. It does not make providers equally reliable; each still has its own rate limits, fields, and failure behavior.</p></details>
       <section class="knowledge-check" data-check-id="system-architecture-check"><h3>Recall</h3><p>Trace one price update: schedule or refresh, Redis broker, Celery worker, source fetch, <code>NormalizedOffer</code>, offer update, <code>PricePoint</code>, then any alert path.</p></section>
       <section class="module-summary"><h3>Summary</h3><p>FastAPI owns fast user-facing operations; workers own source I/O; PostgreSQL owns durable product and price state.</p></section>
@@ -130,6 +272,13 @@
         <h3>Entities and identity</h3>
         <p><code>User</code> owns <code>TrackedProduct</code> rows; a product has many <code>Offer</code> rows; each offer has many <code>PricePoint</code> rows. Alerts, click events, API tokens, dead letters, and a generated 3D model support the main path. UUID primary keys avoid sequential identifiers, and server timestamp defaults let the database provide a shared clock.</p>
       </section>
+      <figure id="entity-visual" class="visual" aria-labelledby="entity-caption">
+        <div role="img" aria-label="The primary relationship is User to TrackedProduct to Offer to PricePoint. Alert, ClickEvent, DeadLetter, ApiToken, and ProductModel3D are supporting records attached to that core system.">
+          <div class="entity-chain"><div class="visual-box">User</div><div class="connector">→</div><div class="visual-box">TrackedProduct</div><div class="connector">→</div><div class="visual-box">Offer</div><div class="connector">→</div><div class="visual-box accent">PricePoint</div></div>
+          <div class="supporting-records"><div class="visual-box">Alert</div><div class="visual-box">ClickEvent</div><div class="visual-box">DeadLetter</div><div class="visual-box">ApiToken</div><div class="visual-box">ProductModel3D</div></div>
+        </div>
+        <figcaption id="entity-caption" class="visual-caption">Ownership flows from a user to tracked products, then offers, then append-only price observations. Alerting, attribution, failure capture, API authentication, and optional model generation are supporting records rather than replacements for that core chain.</figcaption>
+      </figure>
       <section>
         <h3>Money and integrity</h3>
         <p>Money uses SQL <code>Numeric</code> and Python <code>Decimal</code>, not float, so values such as 19.99 compare predictably. The unique constraint on product, source, and source-side id makes discovery idempotent. The history index on offer id and observed time supports price-range reads.</p>
@@ -138,6 +287,7 @@
         <h3>History versus snapshot</h3>
         <p><code>PricePoint</code> is append-only source of truth for charts and lowest-in-window logic. <code>Offer.last_price</code> is a denormalized snapshot that makes common reads cheaper. Today numerical comparison assumes active sources report USD; currency normalization is a current limitation before comparing offers in different currencies.</p>
       </section>
+      <details class="deep-dive"><summary>Term definition: a snapshot is not a ledger</summary><p><code>last_price</code> optimizes the common current-price read. <code>PricePoint</code> preserves the chronological evidence needed to explain a chart or verify a price-drop decision.</p></details>
       <section class="knowledge-check" data-check-id="database-modeling-check"><h3>Check</h3><p>Why keep both history and <code>last_price</code>? History answers temporal questions; the snapshot avoids repeatedly scanning the log for the current card.</p></section>
       <section class="module-summary"><h3>Summary</h3><p>Use UUIDs, database timestamps, Decimal money, constraints, and indexes to make price history correct and queryable.</p></section>
       <button type="button" class="module-complete" data-module="database-modeling" aria-pressed="false">Mark module complete</button>
@@ -174,6 +324,15 @@
         <h3>Classify source outcomes</h3>
         <p>An HTTP 404 or 410 means a listing is delisted: mark it permanently gone and stop refreshing it. HTTP 429 means backpressure; do not immediately retry into a provider quota storm. A transient timeout or provider error can use exponential retry.</p>
       </section>
+      <figure id="failure-visual" class="visual" aria-labelledby="failure-caption">
+        <div class="failure-grid" role="img" aria-label="Four source failure outcomes: 404 or 410 delists an offer, 429 skips a refresh cycle, a transient failure retries with backoff, and an exhausted retry creates a dead letter and stale offer.">
+          <div class="visual-box accent">404 / 410 · delist<small>Mark permanently gone; stop refreshing.</small></div>
+          <div class="visual-box">429 · skip cycle<small>Respect provider backpressure; keep the last observation.</small></div>
+          <div class="visual-box">Transient · retry<small>Use bounded exponential backoff before another attempt.</small></div>
+          <div class="visual-box future">Exhausted · dead letter<small>Record the failure and mark the offer stale.</small></div>
+        </div>
+        <figcaption id="failure-caption" class="visual-caption">Failure type determines its data consequence: delisting is durable, throttling pauses work, transient errors retry with backoff, and exhausted retries leave an auditable dead letter plus visibly stale data.</figcaption>
+      </figure>
       <section>
         <h3>Exhaustion and partial work</h3>
         <p>After retries are exhausted, record a dead letter and mark the offer stale so its old price is not trusted. Discovery can have partial failure: return offers from healthy sources and surface failed sources instead of discarding useful results. Alert debounce prevents repeated notifications inside a cooldown.</p>
@@ -182,6 +341,7 @@
         <h3>Commit boundaries</h3>
         <p>The notification path uses post-send commit behavior: only record the debounce anchor after a successful send. That avoids suppressing a notification merely because state was written before delivery failed, while accepting that distributed delivery still needs careful idempotency reasoning.</p>
       </section>
+      <details class="deep-dive"><summary>Trade-off: a retry is not a promise</summary><p>Retries improve the chance that temporary failure clears. They do not make provider data trustworthy forever, which is why exhausted work must become explicit stale state rather than an invisible loop.</p></details>
       <section class="knowledge-check" data-check-id="reliability-check"><h3>Check</h3><p>Contrast a 404 with a transient timeout. The first is a durable listing fact; the second is evidence to retry with bounded exponential delay.</p></section>
       <section class="module-summary"><h3>Summary</h3><p>Classify failures, preserve partial usefulness, avoid retry storms, and make stale data visibly untrusted.</p></section>
       <button type="button" class="module-complete" data-module="reliability" aria-pressed="false">Mark module complete</button>
@@ -242,6 +402,14 @@
         <h3>Request and network path</h3>
         <p>An Elastic IP reaches Caddy on a public EC2 instance, which proxies to FastAPI in Docker. PostgreSQL runs in private RDS subnets and Redis in private ElastiCache subnets. Security-group references allow the web security group to reach those stores; the design has no SSH ingress because Systems Manager (SSM) provides administration.</p>
       </section>
+      <figure id="aws-visual" class="visual" aria-labelledby="aws-caption">
+        <div class="visual-grid" role="img" aria-label="Internet traffic reaches an Elastic IP, Caddy, and the web EC2 instance in the public subnet. The web security group alone accesses RDS and Redis in private subnets. GitHub delivers through OIDC to ECR and SSM.">
+          <div class="visual-box">Internet</div><div class="connector">→</div><div class="visual-box accent">EIP → Caddy → web EC2<small>public subnet</small></div>
+          <div class="visual-box">web security group</div><div class="connector">→</div><div class="visual-box future">RDS + Redis<small>private subnets; no public path</small></div>
+          <div class="visual-box">GitHub OIDC</div><div class="connector">→</div><div class="visual-box">ECR + SSM<small>image delivery and administration</small></div>
+        </div>
+        <figcaption id="aws-caption" class="visual-caption">The public edge is limited to Internet → Elastic IP → Caddy → web EC2. RDS and Redis remain private and accept data access only from the web security group; GitHub OIDC reaches ECR and SSM for delivery without a long-lived cloud key.</figcaption>
+      </figure>
       <section>
         <h3>Build and deploy</h3>
         <p>GitHub Actions uses GitHub OIDC to assume a narrowly scoped AWS role, builds the image, pushes it to ECR, and sends a deploy command through SSM. The host pulls the image, runs database migrations, starts the compose services, and a health smoke test checks the public health endpoint. Parameter Store supplies application secrets to the instance role.</p>
@@ -274,6 +442,14 @@
         <h3>Describe 100x only when needed</h3>
         <p>At 100x, move to ECS behind an ALB with autoscaling, use Multi-AZ managed data services, and put generated model files in S3. Microservices are not the first step: the current API, worker, and source boundaries already isolate the important responsibilities, and distributed service coordination adds cost before evidence demands it.</p>
       </section>
+      <figure id="scaling-visual" class="visual" aria-labelledby="scaling-caption">
+        <div class="stage-grid" role="img" aria-label="Scaling progresses from the current single host, through ten times demand with separate web and workers, to one hundred times demand with multi-instance web and workers, ALB and ECS, Multi-AZ data, and S3 model storage.">
+          <div class="visual-box current-state"><strong>Current</strong><small>Trigger: a learning-scale workload.</small><br>One EC2 host, single Redis, non-Multi-AZ database, shared model disk.</div>
+          <div class="visual-box accent"><strong>10x</strong><small>Trigger: queue depth or request latency shows contention.</small><br>Independently size web and workers; keep the existing API and worker boundaries.</div>
+          <div class="visual-box future"><strong>100x</strong><small>Trigger: availability and storage limits dominate measured load.</small><br>Multi-instance web/workers, ALB/ECS, Multi-AZ data, and S3 model storage.</div>
+        </div>
+        <figcaption id="scaling-caption" class="visual-caption">Scale in stages: today’s compact host is deliberate, 10x demand separates web and worker capacity when metrics show contention, and 100x introduces multi-instance web and workers, ALB/ECS, Multi-AZ data services, and S3 only when availability and shared-storage limits justify them.</figcaption>
+      </figure>
       <section class="knowledge-check" data-check-id="scaling-check"><h3>Check</h3><p>A provider is returning 429 responses while the queue grows. Which metric changes your plan first: worker count, provider quota, or query latency? Explain why quota and backpressure lead.</p></section>
       <section class="module-summary"><h3>Summary</h3><p>Scale the measured constraint, separate web from workers at 10x, and reserve ECS, ALB, autoscaling, Multi-AZ, and S3 for the 100x case.</p></section>
       <button type="button" class="module-complete" data-module="scaling" aria-pressed="false">Mark module complete</button>
@@ -351,6 +527,8 @@
       <button type="button" class="module-complete" data-module="interview-practice" aria-pressed="false">Mark module complete</button>
     </article>
   </main>
+  </section>
+  </div>
   <footer id="course-finish">
     <h2>Final readiness checklist</h2>
     <ul>
