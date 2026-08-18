@@ -78,6 +78,11 @@
     .visual { margin: 1.75rem 0; padding: 1rem; border: 1px solid var(--slate-300); border-radius: .5rem; background: linear-gradient(135deg, var(--cream-100), var(--paper)); overflow-x: auto; break-inside: avoid; }
     .visual-grid, .flow-grid, .stage-grid { display: grid; gap: .6rem; min-width: 34rem; }
     .visual-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: center; }
+    .architecture-route { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .6rem; align-items: center; min-width: 34rem; }
+    .architecture-data { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .35rem .6rem; align-items: center; min-width: 22rem; }
+    .architecture-data > .visual-box:first-child { grid-column: 1 / -1; width: 50%; justify-self: center; }
+    .architecture-data > .connector { min-height: 1.15rem; }
+    .flow-label { margin-block: .45rem; color: var(--navy-800); font-family: ui-sans-serif, system-ui, sans-serif; font-size: .8rem; font-weight: 750; text-align: center; }
     .flow-grid { grid-template-columns: repeat(4, minmax(9rem, 1fr)); }
     .stage-grid { grid-template-columns: repeat(3, minmax(12rem, 1fr)); }
     .visual-box { min-height: 4.7rem; padding: .75rem; border: 1px solid var(--navy-800); border-radius: .35rem; color: var(--navy-950); background: var(--paper); font-family: ui-sans-serif, system-ui, sans-serif; font-size: .88rem; font-weight: 700; }
@@ -108,7 +113,7 @@
       #mobile-syllabus ul { padding-left: 1.1rem; }
       .course-module { padding: 1.15rem; }
       .visual { padding: .75rem; }
-      .visual-grid, .flow-grid, .stage-grid, .failure-grid, .entity-chain, .supporting-records { min-width: 31rem; }
+      .visual-grid, .flow-grid, .stage-grid, .architecture-route, .failure-grid, .entity-chain, .supporting-records { min-width: 31rem; }
       .module-complete { width: 100%; }
     }
 
@@ -174,17 +179,17 @@
     <summary>Open course syllabus</summary>
     <nav aria-label="Mobile course syllabus">
       <ul>
-        <li><a href="#module-project-story">Module 1: Project story</a></li>
-        <li><a href="#module-system-architecture">Module 2: System architecture</a></li>
-        <li><a href="#module-database-modeling">Module 3: Database modeling</a></li>
-        <li><a href="#module-async-redis">Module 4: Async work and Redis</a></li>
-        <li><a href="#module-reliability">Module 5: Reliability</a></li>
-        <li><a href="#module-api-security-ui">Module 6: API, security, and UI</a></li>
-        <li><a href="#module-ai-mcp">Module 7: AI and MCP</a></li>
-        <li><a href="#module-aws-cicd">Module 8: AWS and CI/CD</a></li>
-        <li><a href="#module-scaling">Module 9: Scaling</a></li>
-        <li><a href="#module-new-grad-fundamentals">Module 10: New-grad fundamentals</a></li>
-        <li><a href="#module-interview-practice">Module 11: Interview practice</a></li>
+        <li><a href="#module-project-story"><span>01 · Project story</span><span class="syllabus-meta">12 min</span><span class="syllabus-badge">To complete</span></a></li>
+        <li><a href="#module-system-architecture"><span>02 · Architecture</span><span class="syllabus-meta">16 min</span><span class="syllabus-badge">To complete</span></a></li>
+        <li><a href="#module-database-modeling"><span>03 · Data model</span><span class="syllabus-meta">14 min</span><span class="syllabus-badge">To complete</span></a></li>
+        <li><a href="#module-async-redis"><span>04 · Async + Redis</span><span class="syllabus-meta">17 min</span><span class="syllabus-badge">To complete</span></a></li>
+        <li><a href="#module-reliability"><span>05 · Reliability</span><span class="syllabus-meta">15 min</span><span class="syllabus-badge">To complete</span></a></li>
+        <li><a href="#module-api-security-ui"><span>06 · API + security</span><span class="syllabus-meta">15 min</span><span class="syllabus-badge">To complete</span></a></li>
+        <li><a href="#module-ai-mcp"><span>07 · AI + MCP</span><span class="syllabus-meta">12 min</span><span class="syllabus-badge">To complete</span></a></li>
+        <li><a href="#module-aws-cicd"><span>08 · AWS + CI/CD</span><span class="syllabus-meta">22 min</span><span class="syllabus-badge">To complete</span></a></li>
+        <li><a href="#module-scaling"><span>09 · Scaling</span><span class="syllabus-meta">15 min</span><span class="syllabus-badge">To complete</span></a></li>
+        <li><a href="#module-new-grad-fundamentals"><span>10 · Fundamentals</span><span class="syllabus-meta">25 min</span><span class="syllabus-badge">To complete</span></a></li>
+        <li><a href="#module-interview-practice"><span>11 · Practice</span><span class="syllabus-meta">20 min</span><span class="syllabus-badge">To complete</span></a></li>
       </ul>
     </nav>
   </details>
@@ -230,11 +235,13 @@
         <p>The browser calls FastAPI. FastAPI authenticates, validates, and persists user intent in PostgreSQL; Redis carries Celery work. Celery Beat schedules sweeps, workers call source adapters, and workers append price observations before notification work can react to a drop.</p>
       </section>
       <figure id="architecture-visual" class="visual" aria-labelledby="architecture-caption">
-        <div class="visual-grid" role="img" aria-label="Browser and MCP clients reach Caddy and FastAPI. FastAPI reads PostgreSQL and Redis. Redis sends jobs to a Celery worker and pub-sub messages to server-sent events; the worker uses source adapters.">
-          <div class="visual-box">Browser + MCP<small>authenticated clients</small></div><div class="connector">→</div><div class="visual-box accent">Caddy<small>public proxy</small></div>
-          <div class="visual-box">FastAPI<small>validation + API</small></div><div class="connector">↔</div><div class="visual-box">PostgreSQL<small>durable product and price state</small></div>
-          <div class="visual-box">Redis<small>broker, cache, locks, pub/sub</small></div><div class="connector">→</div><div class="visual-box future">Celery worker → source adapters<small>slow provider I/O</small></div>
-          <div class="visual-box">Redis pub/sub</div><div class="connector">→</div><div class="visual-box">SSE<small>one-way browser updates</small></div>
+        <div role="img" aria-label="Browser and MCP clients reach Caddy, then FastAPI. FastAPI writes PostgreSQL and uses Redis. Redis sends jobs to a Celery worker and pub-sub messages to server-sent events; the worker uses source adapters.">
+          <div class="architecture-route"><div class="visual-box">Browser + MCP<small>authenticated clients</small></div><div class="connector">→</div><div class="visual-box accent">Caddy<small>public proxy</small></div><div class="connector">→</div><div class="visual-box">FastAPI<small>validation + API</small></div></div>
+          <div class="flow-label">Caddy → FastAPI</div>
+          <div class="architecture-data"><div class="visual-box">FastAPI<small>validation + API</small></div><div class="connector">↓</div><div class="connector">↓</div><div class="visual-box">PostgreSQL<small>durable product and price state</small></div><div class="visual-box">Redis<small>broker, cache, locks, pub/sub</small></div></div>
+          <div class="flow-label">FastAPI → PostgreSQL + Redis</div>
+          <div class="architecture-route"><div class="visual-box">Redis</div><div class="connector">→</div><div class="visual-box future">Celery worker<small>slow provider I/O</small></div><div class="connector">→</div><div class="visual-box">source adapters</div></div>
+          <div class="architecture-route"><div class="visual-box">Redis pub/sub</div><div class="connector">→</div><div class="visual-box">SSE<small>one-way browser updates</small></div></div>
         </div>
         <figcaption id="architecture-caption" class="visual-caption">Request work stays on the Browser/MCP → Caddy → FastAPI path. PostgreSQL is durable state; Redis connects background work to Celery and sends publication events to SSE, while adapters isolate provider-specific fetching.</figcaption>
       </figure>

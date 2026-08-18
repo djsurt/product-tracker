@@ -136,3 +136,36 @@ def test_course_has_navigation_and_progressive_disclosure():
         assert element_id in parser.ids
     assert html.count('class="deep-dive"') >= 6
     assert html.count('class="model-answer"') >= 15
+
+
+def test_architecture_visual_draws_complete_request_and_data_flows():
+    _, html = parse_course()
+    architecture = html.split('<figure id="architecture-visual"', 1)[1].split(
+        "</figure>", 1
+    )[0]
+    assert '<div class="flow-label">Caddy → FastAPI</div>' in architecture
+    assert '<div class="flow-label">FastAPI → PostgreSQL + Redis</div>' in architecture
+
+
+def test_mobile_syllabus_repeats_each_module_time_and_completion_badge():
+    _, html = parse_course()
+    mobile_syllabus = html.split('<details id="mobile-syllabus"', 1)[1].split(
+        "</details>", 1
+    )[0]
+    assert mobile_syllabus.count('class="syllabus-meta"') == 11
+    assert mobile_syllabus.count('class="syllabus-badge"') == 11
+    for number, title, minutes in (
+        ("01", "Project story", "12 min"),
+        ("02", "Architecture", "16 min"),
+        ("03", "Data model", "14 min"),
+        ("04", "Async + Redis", "17 min"),
+        ("05", "Reliability", "15 min"),
+        ("06", "API + security", "15 min"),
+        ("07", "AI + MCP", "12 min"),
+        ("08", "AWS + CI/CD", "22 min"),
+        ("09", "Scaling", "15 min"),
+        ("10", "Fundamentals", "25 min"),
+        ("11", "Practice", "20 min"),
+    ):
+        assert f"{number} · {title}" in mobile_syllabus
+        assert minutes in mobile_syllabus
