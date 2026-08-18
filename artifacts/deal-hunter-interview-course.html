@@ -68,6 +68,13 @@
     .module-summary { border-color: var(--green-700); background: var(--green-100); }
     .knowledge-check h3, .module-summary h3 { margin: 0 0 .35rem; }
     .knowledge-check p, .module-summary p { margin-bottom: 0; }
+    .knowledge-check fieldset { margin: .9rem 0; padding: .8rem; border: 1px solid var(--slate-300); border-radius: .35rem; }
+    .knowledge-check legend { padding-inline: .25rem; color: var(--navy-950); font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 700; }
+    .check-answer { display: block; margin-block: .45rem; }
+    .check-submit { margin-top: .2rem; }
+    .check-feedback { min-height: 1.5rem; margin-top: .7rem; font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 700; }
+    .check-explanation { border-color: var(--orange-600); }
+    #storage-notice { margin: .65rem 0 0; color: var(--orange-100); font-family: ui-sans-serif, system-ui, sans-serif; font-size: .9rem; }
     details { margin-block: .9rem; border: 1px solid var(--slate-300); border-radius: .35rem; background: var(--cream-100); }
     summary { padding: .75rem .9rem; color: var(--navy-950); font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 700; cursor: pointer; }
     details > :not(summary) { margin-inline: .9rem; }
@@ -145,8 +152,10 @@
     <p>Plan for two to three hours of focused study. This course turns the repository’s working price-tracking system into clear, honest interview answers.</p>
     <p><strong>Project:</strong> Deal Hunter lets a signed-in user track products, collect offers from sources, compare prices, receive alerts, and use a browser UI, MCP tools, live updates, and an optional 3D preview.</p>
     <section aria-label="Overall course progress">
-      <p>Overall progress: <span id="overall-progress">0 of 11 modules complete</span></p>
-      <progress id="course-progress" value="0" max="11">0 of 11</progress>
+      <p>Overall progress: <span id="overall-progress">0 of 11 modules complete</span> <span id="progress-label">0% complete</span></p>
+      <progress id="course-progress" value="0" max="11" aria-labelledby="overall-progress progress-label">0 of 11</progress>
+      <p id="remaining-time">183 minutes remaining</p>
+      <p id="storage-notice" hidden>Progress will not persist in this browser.</p>
     </section>
     <p>
       <button id="continue-course" type="button">Continue course</button>
@@ -216,9 +225,16 @@
         <p><strong>30-second pitch:</strong> “Deal Hunter is a price-tracking wishlist. A FastAPI API stores each user’s products, Celery workers collect offers through a shared source interface, and PostgreSQL keeps price history so the app can show a best deal and send alerts.”</p>
         <p><strong>60-second pitch:</strong> Add that slow provider work is off the request path, Redis coordinates the queue, cache, and locks, and the UI, MCP endpoint, and deployment demonstrate how the same core model can serve several interfaces.</p>
       </section>
-      <details class="deep-dive"><summary>Practice constraint: be precise, not grand</summary><p>A strong interview story names the user, the system boundary, and a trade-off. It does not turn a learning project into an invented production success story.</p></details>
+      <details class="deep-dive" id="project-story-precision"><summary>Practice constraint: be precise, not grand</summary><p>A strong interview story names the user, the system boundary, and a trade-off. It does not turn a learning project into an invented production success story.</p></details>
       <section class="knowledge-check" data-check-id="project-story-check">
-        <h3>Recall</h3><p>Why did you build it? Answer with the user’s comparison-and-alert problem, then name the technical learning goal rather than claiming unmeasured impact.</p>
+        <h3>Knowledge check</h3>
+        <fieldset><legend>Why should slow source fetching stay off the request path?</legend>
+          <label class="check-answer"><input type="radio" name="project-story-check" value="correct" data-correct="true"> It protects user-facing latency while workers handle unreliable provider I/O.</label>
+          <label class="check-answer"><input type="radio" name="project-story-check" value="incorrect"> It makes PostgreSQL unnecessary for user requests.</label>
+        </fieldset>
+        <button class="check-submit" type="button">Check answer</button>
+        <p class="check-feedback" role="status" tabindex="-1"></p>
+        <details class="check-explanation"><summary>Why this is correct</summary><p>FastAPI can validate and persist intent quickly; Celery workers absorb slow, failure-prone provider calls without holding the browser request open.</p></details>
       </section>
       <section class="module-summary"><h3>Summary</h3><p>Lead with the problem, describe phased delivery, and make every contribution claim traceable to the repository.</p></section>
       <button type="button" class="module-complete" data-module="project-story" aria-pressed="false">Mark module complete</button>
@@ -263,8 +279,12 @@
         </div>
         <figcaption id="refresh-caption" class="visual-caption">A stored tracked product becomes source discovery, normalized offers, queued fetching, a durable current snapshot plus append-only history, cache invalidation, live publication, and finally alert evaluation.</figcaption>
       </figure>
-      <details class="deep-dive"><summary>Trade-off: one adapter contract</summary><p><code>PriceSource</code> makes mock, API, and scraper adapters interchangeable at the pipeline boundary. It does not make providers equally reliable; each still has its own rate limits, fields, and failure behavior.</p></details>
-      <section class="knowledge-check" data-check-id="system-architecture-check"><h3>Recall</h3><p>Trace one price update: schedule or refresh, Redis broker, Celery worker, source fetch, <code>NormalizedOffer</code>, offer update, <code>PricePoint</code>, then any alert path.</p></section>
+      <details class="deep-dive" id="architecture-adapter-contract"><summary>Trade-off: one adapter contract</summary><p><code>PriceSource</code> makes mock, API, and scraper adapters interchangeable at the pipeline boundary. It does not make providers equally reliable; each still has its own rate limits, fields, and failure behavior.</p></details>
+      <section class="knowledge-check" data-check-id="system-architecture-check"><h3>Knowledge check</h3>
+        <fieldset><legend>Why is <code>PricePoint</code> append-only rather than just overwriting the latest price?</legend>
+          <label class="check-answer"><input type="radio" name="system-architecture-check" value="correct" data-correct="true"> It preserves chronological evidence for charts and lowest-in-window questions.</label>
+          <label class="check-answer"><input type="radio" name="system-architecture-check" value="incorrect"> It guarantees that a source never returns duplicate offers.</label>
+        </fieldset><button class="check-submit" type="button">Check answer</button><p class="check-feedback" role="status" tabindex="-1"></p><details class="check-explanation"><summary>Why this is correct</summary><p>Append-only observations let the course explain how a price changed over time; <code>last_price</code> remains the optimized current snapshot.</p></details></section>
       <section class="module-summary"><h3>Summary</h3><p>FastAPI owns fast user-facing operations; workers own source I/O; PostgreSQL owns durable product and price state.</p></section>
       <button type="button" class="module-complete" data-module="system-architecture" aria-pressed="false">Mark module complete</button>
     </article>
@@ -294,8 +314,12 @@
         <h3>History versus snapshot</h3>
         <p><code>PricePoint</code> is append-only source of truth for charts and lowest-in-window logic. <code>Offer.last_price</code> is a denormalized snapshot that makes common reads cheaper. Today numerical comparison assumes active sources report USD; currency normalization is a current limitation before comparing offers in different currencies.</p>
       </section>
-      <details class="deep-dive"><summary>Term definition: a snapshot is not a ledger</summary><p><code>last_price</code> optimizes the common current-price read. <code>PricePoint</code> preserves the chronological evidence needed to explain a chart or verify a price-drop decision.</p></details>
-      <section class="knowledge-check" data-check-id="database-modeling-check"><h3>Check</h3><p>Why keep both history and <code>last_price</code>? History answers temporal questions; the snapshot avoids repeatedly scanning the log for the current card.</p></section>
+      <details class="deep-dive" id="data-model-snapshot-ledger"><summary>Term definition: a snapshot is not a ledger</summary><p><code>last_price</code> optimizes the common current-price read. <code>PricePoint</code> preserves the chronological evidence needed to explain a chart or verify a price-drop decision.</p></details>
+      <section class="knowledge-check" data-check-id="database-modeling-check"><h3>Knowledge check</h3>
+        <fieldset><legend>Which control prevents duplicate offer identities across concurrent workers?</legend>
+          <label class="check-answer"><input type="radio" name="database-modeling-check" value="correct" data-correct="true"> A database uniqueness constraint with repeat-safe upsert logic.</label>
+          <label class="check-answer"><input type="radio" name="database-modeling-check" value="incorrect"> A distributed Redis lock alone.</label>
+        </fieldset><button class="check-submit" type="button">Check answer</button><p class="check-feedback" role="status" tabindex="-1"></p><details class="check-explanation"><summary>Why this is correct</summary><p>A lock reduces competing work, but the database constraint is the durable final authority for uniqueness.</p></details></section>
       <section class="module-summary"><h3>Summary</h3><p>Use UUIDs, database timestamps, Decimal money, constraints, and indexes to make price history correct and queryable.</p></section>
       <button type="button" class="module-complete" data-module="database-modeling" aria-pressed="false">Mark module complete</button>
     </article>
@@ -315,8 +339,12 @@
         <p>Redis is used as broker, cache, lock store, rate-limit state, shared metrics store, pub/sub transport for live updates, and model-generation quota counter. A per-offer lock using <code>SET NX EX</code> reduces duplicate concurrent refreshes; the database unique constraint is the final integrity backstop.</p>
         <p>Best-deal reads use cache-aside: read a cache key, compute and store the result on a miss, then invalidate or expire it when price data changes.</p>
       </section>
-      <details class="deep-dive"><summary>Blast radius trade-off</summary><p>A single Redis service simplifies a learning project, but an outage can affect queueing, caching, locks, rate limiting, metrics, and pub/sub together. Separating critical roles is a later resilience decision, not an automatic first step.</p></details>
-      <section class="knowledge-check" data-check-id="async-redis-check"><h3>Check</h3><p>What makes at-least-once safe here? Idempotency: repeatable discovery, unique offer identity, append-only observations, and a short-lived per-offer lock.</p></section>
+      <details class="deep-dive" id="redis-blast-radius"><summary>Blast radius trade-off</summary><p>A single Redis service simplifies a learning project, but an outage can affect queueing, caching, locks, rate limiting, metrics, and pub/sub together. Separating critical roles is a later resilience decision, not an automatic first step.</p></details>
+      <section class="knowledge-check" data-check-id="async-redis-check"><h3>Knowledge check</h3>
+        <fieldset><legend>What is the main risk of using one Redis service for broker, cache, locks, and pub/sub?</legend>
+          <label class="check-answer"><input type="radio" name="async-redis-check" value="correct" data-correct="true"> One outage can disrupt several unrelated system roles at once.</label>
+          <label class="check-answer"><input type="radio" name="async-redis-check" value="incorrect"> Redis will make price history non-durable by design.</label>
+        </fieldset><button class="check-submit" type="button">Check answer</button><p class="check-feedback" role="status" tabindex="-1"></p><details class="check-explanation"><summary>Why this is correct</summary><p>Redis is convenient here, but combining its roles broadens the impact of an outage; PostgreSQL remains the durable database.</p></details></section>
       <section class="module-summary"><h3>Summary</h3><p>Use Celery to move source I/O off requests and design every task for repeat delivery.</p></section>
       <button type="button" class="module-complete" data-module="async-redis" aria-pressed="false">Mark module complete</button>
     </article>
@@ -348,8 +376,12 @@
         <h3>Commit boundaries</h3>
         <p>The notification path uses post-send commit behavior: only record the debounce anchor after a successful send. That avoids suppressing a notification merely because state was written before delivery failed, while accepting that distributed delivery still needs careful idempotency reasoning.</p>
       </section>
-      <details class="deep-dive"><summary>Trade-off: a retry is not a promise</summary><p>Retries improve the chance that temporary failure clears. They do not make provider data trustworthy forever, which is why exhausted work must become explicit stale state rather than an invisible loop.</p></details>
-      <section class="knowledge-check" data-check-id="reliability-check"><h3>Check</h3><p>Contrast a 404 with a transient timeout. The first is a durable listing fact; the second is evidence to retry with bounded exponential delay.</p></section>
+      <details class="deep-dive" id="reliability-retry-limits"><summary>Trade-off: a retry is not a promise</summary><p>Retries improve the chance that temporary failure clears. They do not make provider data trustworthy forever, which is why exhausted work must become explicit stale state rather than an invisible loop.</p></details>
+      <section class="knowledge-check" data-check-id="reliability-check"><h3>Knowledge check</h3>
+        <fieldset><legend>How should the system classify a provider 404 differently from a timeout?</legend>
+          <label class="check-answer"><input type="radio" name="reliability-check" value="correct" data-correct="true"> Treat 404 as a durable listing fact and retry a timeout with bounded backoff.</label>
+          <label class="check-answer"><input type="radio" name="reliability-check" value="incorrect"> Retry both indefinitely because all failures are temporary.</label>
+        </fieldset><button class="check-submit" type="button">Check answer</button><p class="check-feedback" role="status" tabindex="-1"></p><details class="check-explanation"><summary>Why this is correct</summary><p>Failure classification prevents retry storms: delist durable 404/410 results, while transient network failures may clear after limited retries.</p></details></section>
       <section class="module-summary"><h3>Summary</h3><p>Classify failures, preserve partial usefulness, avoid retry storms, and make stale data visibly untrusted.</p></section>
       <button type="button" class="module-complete" data-module="reliability" aria-pressed="false">Mark module complete</button>
     </article>
@@ -373,7 +405,11 @@
         <h3>Live-update trade-off</h3>
         <p>Earlier pages used polling. Server-sent events are a one-way server-to-browser stream for price and model progress, simpler than WebSockets when the browser does not need a bidirectional live protocol. Polling is simpler to operate for low-frequency updates; WebSockets are appropriate when interactive two-way messages are required.</p>
       </section>
-      <section class="knowledge-check" data-check-id="api-security-ui-check"><h3>Check</h3><p>Give one example of authorization after authentication: a valid JWT is insufficient unless the requested tracked product belongs to that user.</p></section>
+      <section class="knowledge-check" data-check-id="api-security-ui-check"><h3>Knowledge check</h3>
+        <fieldset><legend>Which credential storage pairing is appropriate?</legend>
+          <label class="check-answer"><input type="radio" name="api-security-ui-check" value="correct" data-correct="true"> Passwords use a slow password hash; API tokens use a stored SHA-256 digest.</label>
+          <label class="check-answer"><input type="radio" name="api-security-ui-check" value="incorrect"> Both credentials should be stored in plaintext so they can be displayed later.</label>
+        </fieldset><button class="check-submit" type="button">Check answer</button><p class="check-feedback" role="status" tabindex="-1"></p><details class="check-explanation"><summary>Why this is correct</summary><p>Password hashes are intentionally slow for human secrets. A token digest limits exposure while the raw API token is only shown at creation.</p></details></section>
       <section class="module-summary"><h3>Summary</h3><p>Dependencies provide request boundaries, owner checks enforce access, and SSE adds live server updates without a full socket protocol.</p></section>
       <button type="button" class="module-complete" data-module="api-security-ui" aria-pressed="false">Mark module complete</button>
     </article>
@@ -393,8 +429,12 @@
         <h3>MCP boundary</h3>
         <p>The MCP endpoint uses Streamable HTTP and bearer-token authentication. Its six tools are <code>list_wishlist</code>, <code>add_tracked_product</code>, <code>get_best_deal</code>, <code>get_price_history</code>, <code>search_deals</code>, and <code>create_alert</code>. Per-user tool isolation comes from resolving the token to a user and passing that user into service calls.</p>
       </section>
-      <details class="deep-dive"><summary>Storage limitation</summary><p>Generated files use a shared filesystem volume in the current deployment. That is workable on one host but becomes a filesystem scaling limitation when web and workers do not share a disk; object storage is the next step.</p></details>
-      <section class="knowledge-check" data-check-id="ai-mcp-check"><h3>Check</h3><p>Why is an MCP token not enough by itself? Each tool still needs a user-scoped database operation so one token cannot expose another user’s wishlist.</p></section>
+      <details class="deep-dive" id="mcp-storage-limitation"><summary>Storage limitation</summary><p>Generated files use a shared filesystem volume in the current deployment. That is workable on one host but becomes a filesystem scaling limitation when web and workers do not share a disk; object storage is the next step.</p></details>
+      <section class="knowledge-check" data-check-id="ai-mcp-check"><h3>Knowledge check</h3>
+        <fieldset><legend>How do MCP tools preserve ownership boundaries?</legend>
+          <label class="check-answer"><input type="radio" name="ai-mcp-check" value="correct" data-correct="true"> Resolve the token to a user and use user-scoped service operations for every tool.</label>
+          <label class="check-answer"><input type="radio" name="ai-mcp-check" value="incorrect"> Let any valid token query every wishlist because the endpoint is authenticated.</label>
+        </fieldset><button class="check-submit" type="button">Check answer</button><p class="check-feedback" role="status" tabindex="-1"></p><details class="check-explanation"><summary>Why this is correct</summary><p>Authentication identifies the caller; passing that user to each service operation enforces authorization and prevents cross-user data access.</p></details></section>
       <section class="module-summary"><h3>Summary</h3><p>Gate optional AI work, bound its cost, and treat MCP as another authenticated interface to the same user-owned data.</p></section>
       <button type="button" class="module-complete" data-module="ai-mcp" aria-pressed="false">Mark module complete</button>
     </article>
@@ -426,7 +466,11 @@
         <p>Terraform state is configured for S3 with DynamoDB locking. The small deployment omits a NAT gateway and an ALB to reduce cost and moving parts: private databases need no outbound internet path, while the single public host is the ingress point. That also means fewer availability guarantees.</p>
         <p>Deploying an image tag named <code>latest</code> has a consistency risk if a host pulls at an unexpected moment; an immutable commit tag is safer. The workflow has no automated rollback, so a failed health check needs an explicit recovery procedure.</p>
       </section>
-      <section class="knowledge-check" data-check-id="aws-cicd-check"><h3>Check</h3><p>Why is GitHub OIDC preferable to a long-lived cloud key in CI? It exchanges a short-lived identity token for a role under repository and branch conditions.</p></section>
+      <section class="knowledge-check" data-check-id="aws-cicd-check"><h3>Knowledge check</h3>
+        <fieldset><legend>Why keep RDS and ElastiCache private and scope security groups to the web host?</legend>
+          <label class="check-answer"><input type="radio" name="aws-cicd-check" value="correct" data-correct="true"> Data services avoid public exposure and accept only expected application traffic.</label>
+          <label class="check-answer"><input type="radio" name="aws-cicd-check" value="incorrect"> Private subnets automatically remove the need for application authentication.</label>
+        </fieldset><button class="check-submit" type="button">Check answer</button><p class="check-feedback" role="status" tabindex="-1"></p><details class="check-explanation"><summary>Why this is correct</summary><p>Private placement and least-privilege security-group rules reduce network exposure; they complement rather than replace application-level access controls.</p></details></section>
       <section class="module-summary"><h3>Summary</h3><p>This is a cost-conscious single-host deployment with private data services, SSM administration, ECR delivery, and clearly named rollout risks.</p></section>
       <button type="button" class="module-complete" data-module="aws-cicd" aria-pressed="false">Mark module complete</button>
     </article>
@@ -457,7 +501,11 @@
         </div>
         <figcaption id="scaling-caption" class="visual-caption">Scale in stages: today’s compact host is deliberate, 10x demand separates web and worker capacity when metrics show contention, and 100x introduces multi-instance web and workers, ALB/ECS, Multi-AZ data services, and S3 only when availability and shared-storage limits justify them.</figcaption>
       </figure>
-      <section class="knowledge-check" data-check-id="scaling-check"><h3>Check</h3><p>A provider is returning 429 responses while the queue grows. Which metric changes your plan first: worker count, provider quota, or query latency? Explain why quota and backpressure lead.</p></section>
+      <section class="knowledge-check" data-check-id="scaling-check"><h3>Knowledge check</h3>
+        <fieldset><legend>Before choosing a scaling change, what should you measure first?</legend>
+          <label class="check-answer"><input type="radio" name="scaling-check" value="correct" data-correct="true"> The constrained resource, such as queue depth, provider quota, latency, or database load.</label>
+          <label class="check-answer"><input type="radio" name="scaling-check" value="incorrect"> Add microservices immediately because they always increase capacity.</label>
+        </fieldset><button class="check-submit" type="button">Check answer</button><p class="check-feedback" role="status" tabindex="-1"></p><details class="check-explanation"><summary>Why this is correct</summary><p>Scaling should relieve the measured bottleneck. More workers cannot solve a provider quota or a database constraint by themselves.</p></details></section>
       <section class="module-summary"><h3>Summary</h3><p>Scale the measured constraint, separate web from workers at 10x, and reserve ECS, ALB, autoscaling, Multi-AZ, and S3 for the 100x case.</p></section>
       <button type="button" class="module-complete" data-module="scaling" aria-pressed="false">Mark module complete</button>
     </article>
@@ -481,7 +529,11 @@
         <p>HTTP carries browser and provider requests; DNS resolves a host name; TLS protects the connection; status codes distinguish success, client error, and server error; and timeouts stop a provider call from blocking forever. A process has its own address space, while a thread shares one process’s memory. A race condition can occur when two workers refresh one offer, so the system uses a lock; careless lock ordering can cause deadlock.</p>
         <p>Price-source network calls are I/O-bound, which fits asynchronous/background concurrency. CPU-bound work competes for processor time and would need a different capacity plan than mostly I/O-bound fetching.</p>
       </section>
-      <section class="knowledge-check" data-check-id="new-grad-fundamentals-check"><h3>Check</h3><p>Choose the right concept for each Deal Hunter component: source registry—hash map; refresh broker—queue; unique offer identity—constraint; a competing refresh—race condition and lock.</p></section>
+      <section class="knowledge-check" data-check-id="new-grad-fundamentals-check"><h3>Knowledge check</h3>
+        <fieldset><legend>Which choice improves a common price-history lookup by offer and time?</legend>
+          <label class="check-answer"><input type="radio" name="new-grad-fundamentals-check" value="correct" data-correct="true"> Select an index that matches the query’s offer and timestamp access pattern.</label>
+          <label class="check-answer"><input type="radio" name="new-grad-fundamentals-check" value="incorrect"> Scan every <code>PricePoint</code> row because Big O never matters for databases.</label>
+        </fieldset><button class="check-submit" type="button">Check answer</button><p class="check-feedback" role="status" tabindex="-1"></p><details class="check-explanation"><summary>Why this is correct</summary><p>Index selection is tied to the access pattern: it avoids unnecessary scans as the append-only history grows.</p></details></section>
       <section class="module-summary"><h3>Summary</h3><p>Definitions become persuasive when every Big O, transaction, protocol, and concurrency concept is tied to a working component.</p></section>
       <button type="button" class="module-complete" data-module="new-grad-fundamentals" aria-pressed="false">Mark module complete</button>
     </article>
@@ -529,7 +581,11 @@
           <li>Do not claim a team decision as your own; state exactly what you implemented or would validate.</li>
         </ul>
       </section>
-      <section class="knowledge-check" data-check-id="interview-practice-check"><h3>Readiness check</h3><p>Without notes, give your pitch, trace a flow, defend one trade-off, name one limitation, tell one failure story, and give one scaling answer.</p></section>
+      <section class="knowledge-check" data-check-id="interview-practice-check"><h3>Readiness check</h3>
+        <fieldset><legend>How should you frame a limitation of this learning project?</legend>
+          <label class="check-answer"><input type="radio" name="interview-practice-check" value="correct" data-correct="true"> State the current limitation, its impact, and the next justified improvement without inventing production results.</label>
+          <label class="check-answer"><input type="radio" name="interview-practice-check" value="incorrect"> Claim the limitation was solved at scale even when the repository has no such evidence.</label>
+        </fieldset><button class="check-submit" type="button">Check answer</button><p class="check-feedback" role="status" tabindex="-1"></p><details class="check-explanation"><summary>Why this is correct</summary><p>Honest limitation framing shows judgment: describe what exists, where it stops, and what evidence would justify the next step.</p></details></section>
       <section class="module-summary"><h3>Summary</h3><p>Use native model answers to rehearse, then replace them with concise explanations grounded in the code.</p></section>
       <button type="button" class="module-complete" data-module="interview-practice" aria-pressed="false">Mark module complete</button>
     </article>
@@ -547,5 +603,175 @@
     <p>Next study recommendation: draw the architecture from memory, then practice one technical and one behavioral answer aloud with a two-minute timer.</p>
   </footer>
   <p id="course-live-region" class="sr-only" aria-live="polite"></p>
+  <script>
+    const STORAGE_KEY = "deal-hunter-interview-course:v1";
+    const STATE_VERSION = 1;
+    let storageAvailable = true;
+    let courseState = { version: 1, completedModules: [], openDetails: [] };
+
+    function emptyState() {
+      return { version: 1, completedModules: [], openDetails: [] };
+    }
+
+    function loadState() {
+      try {
+        const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "null");
+        if (!parsed || parsed.version !== STATE_VERSION ||
+            !Array.isArray(parsed.completedModules) ||
+            !Array.isArray(parsed.openDetails)) {
+          return emptyState();
+        }
+        return {
+          version: 1,
+          completedModules: [...new Set(parsed.completedModules)],
+          openDetails: [...new Set(parsed.openDetails)],
+        };
+      } catch (error) {
+        storageAvailable = false;
+        return emptyState();
+      }
+    }
+
+    function saveState(state) {
+      courseState = {
+        version: 1,
+        completedModules: state.completedModules,
+        openDetails: state.openDetails,
+      };
+      if (!storageAvailable) return;
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(courseState));
+      } catch (error) {
+        storageAvailable = false;
+        const notice = document.querySelector("#storage-notice");
+        if (notice) notice.hidden = false;
+      }
+    }
+
+    function announce(message) {
+      document.querySelector("#course-live-region").textContent = message;
+    }
+
+    function renderProgress(announcement = "") {
+      const modules = [...document.querySelectorAll("[data-module-id]")];
+      const completeIds = new Set(courseState.completedModules);
+      const completeCount = modules.filter((module) => completeIds.has(module.dataset.moduleId)).length;
+      const percent = modules.length ? Math.round((completeCount / modules.length) * 100) : 0;
+      const remainingMinutes = modules
+        .filter((module) => !completeIds.has(module.dataset.moduleId))
+        .reduce((total, module) => total + Number(module.dataset.minutes || 0), 0);
+
+      document.querySelector("#overall-progress").textContent =
+        `${completeCount} of ${modules.length} modules complete`;
+      document.querySelector("#progress-label").textContent = `${percent}% complete`;
+      document.querySelector("#remaining-time").textContent =
+        `${remainingMinutes} minutes remaining`;
+      const progress = document.querySelector("#course-progress");
+      progress.value = completeCount;
+      progress.max = modules.length;
+      progress.textContent = `${percent}% complete`;
+      document.querySelector("#storage-notice").hidden = storageAvailable;
+
+      document.querySelectorAll(".module-complete[data-module]").forEach((button) => {
+        const isComplete = completeIds.has(button.dataset.module);
+        button.textContent = isComplete ? "Mark module incomplete" : "Mark module complete";
+        button.setAttribute("aria-pressed", String(isComplete));
+      });
+      modules.forEach((module) => {
+        const status = completeIds.has(module.dataset.moduleId) ? "Complete" : "Not complete";
+        document.querySelectorAll(`a[href="#${module.id}"] .syllabus-badge`).forEach((badge) => {
+          badge.textContent = status;
+        });
+      });
+      if (announcement) announce(announcement);
+    }
+
+    function toggleModule(moduleId) {
+      const completeIds = new Set(courseState.completedModules);
+      const isComplete = completeIds.has(moduleId);
+      if (isComplete) {
+        completeIds.delete(moduleId);
+      } else {
+        completeIds.add(moduleId);
+      }
+      saveState({ ...courseState, completedModules: [...completeIds] });
+      renderProgress(`Module ${isComplete ? "marked incomplete" : "marked complete"}.`);
+    }
+
+    function focusAndScroll(element) {
+      element.setAttribute("tabindex", "-1");
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      element.focus({ preventScroll: true });
+    }
+
+    function continueCourse() {
+      const nextModule = [...document.querySelectorAll("[data-module-id]")].find(
+        (module) => !courseState.completedModules.includes(module.dataset.moduleId)
+      );
+      if (nextModule) {
+        focusAndScroll(nextModule.querySelector("h2"));
+        announce("Moved to the next incomplete module.");
+        return;
+      }
+      focusAndScroll(document.querySelector("#course-finish"));
+      announce("All modules are complete. Moved to the final readiness checklist.");
+    }
+
+    function resetProgress() {
+      if (!window.confirm("Reset all course progress?")) return;
+      saveState(emptyState());
+      document.querySelectorAll(".deep-dive[id]").forEach((detail) => {
+        detail.open = false;
+      });
+      renderProgress("Course progress reset.");
+    }
+
+    function gradeCheck(checkElement) {
+      const selected = [...checkElement.querySelectorAll(".check-answer input:checked")];
+      const correct = [...checkElement.querySelectorAll('.check-answer input[data-correct="true"]')];
+      const feedback = checkElement.querySelector(".check-feedback");
+      if (!selected.length) {
+        feedback.textContent = "Review: Choose an answer before checking.";
+        feedback.focus();
+        return;
+      }
+      const isCorrect = selected.length === correct.length && selected.every(
+        (input) => input.dataset.correct === "true"
+      );
+      feedback.textContent = isCorrect
+        ? "Correct: You selected the key reasoning."
+        : "Review: Revisit the explanation and try the reasoning again.";
+      checkElement.querySelector(".check-explanation").open = true;
+      feedback.focus();
+    }
+
+    function initializeCourse() {
+      courseState = loadState();
+      document.querySelectorAll(".deep-dive[id]").forEach((detail) => {
+        detail.open = courseState.openDetails.includes(detail.id);
+        detail.addEventListener("toggle", () => {
+          const openDetails = new Set(courseState.openDetails);
+          if (detail.open) {
+            openDetails.add(detail.id);
+          } else {
+            openDetails.delete(detail.id);
+          }
+          saveState({ ...courseState, openDetails: [...openDetails] });
+        });
+      });
+      document.querySelectorAll(".module-complete[data-module]").forEach((button) => {
+        button.addEventListener("click", () => toggleModule(button.dataset.module));
+      });
+      document.querySelector("#continue-course").addEventListener("click", continueCourse);
+      document.querySelector("#reset-progress").addEventListener("click", resetProgress);
+      document.querySelector("#print-course").addEventListener("click", () => window.print());
+      document.querySelectorAll(".check-submit").forEach((button) => {
+        button.addEventListener("click", () => gradeCheck(button.closest(".knowledge-check")));
+      });
+      renderProgress();
+    }
+
+    document.addEventListener("DOMContentLoaded", initializeCourse);
+  </script>
 </body>
 </html>

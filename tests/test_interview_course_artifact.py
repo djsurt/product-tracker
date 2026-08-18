@@ -169,3 +169,41 @@ def test_mobile_syllabus_repeats_each_module_time_and_completion_badge():
     ):
         assert f"{number} · {title}" in mobile_syllabus
         assert minutes in mobile_syllabus
+
+
+def test_progress_interaction_contract_is_embedded():
+    _, html = parse_course()
+    for function_name in (
+        "loadState", "saveState", "renderProgress", "toggleModule",
+        "continueCourse", "resetProgress", "gradeCheck", "initializeCourse",
+    ):
+        assert f"function {function_name}(" in html
+    for token in (
+        'const STORAGE_KEY = "deal-hunter-interview-course:v1"',
+        "completedModules",
+        "openDetails",
+        "window.localStorage",
+        "aria-pressed",
+        'aria-live="polite"',
+        "window.confirm(",
+    ):
+        assert token in html
+
+
+def test_state_is_versioned_and_answers_are_not_persisted():
+    _, html = parse_course()
+    assert "version: 1" in html
+    save_start = html.index("function saveState(")
+    save_end = html.index("function renderProgress(", save_start)
+    save_body = html[save_start:save_end]
+    assert "completedModules" in save_body
+    assert "openDetails" in save_body
+    assert "answer" not in save_body.lower()
+
+
+def test_every_knowledge_check_has_feedback_and_explanation():
+    _, html = parse_course()
+    assert html.count('class="knowledge-check"') == 11
+    assert html.count('class="check-feedback"') == 11
+    assert html.count('class="check-explanation"') == 11
+    assert html.count('class="check-answer"') >= 22
