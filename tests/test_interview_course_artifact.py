@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -125,6 +126,31 @@ def test_accessible_responsive_and_print_styles_exist():
         assert token in html
     assert "overflow-x: auto" in html
     assert "break-inside: avoid" in html
+
+
+def test_programmatic_navigation_respects_reduced_motion():
+    _, html = parse_course()
+    focus_start = html.index("function focusAndScroll(")
+    focus_end = html.index("function continueCourse(", focus_start)
+    focus_body = html[focus_start:focus_end]
+    assert 'window.matchMedia("(prefers-reduced-motion: reduce)").matches' in focus_body
+    assert 'behavior: reduceMotion ? "auto" : "smooth"' in focus_body
+
+
+def test_print_hides_quiz_actions_and_reveals_disclosures():
+    _, html = parse_course()
+    print_styles = html.split("@media print", 1)[1].split("</style>", 1)[0]
+    hidden_selectors = [
+        selectors
+        for selectors, declarations in re.findall(r"([^{}]+)\{([^{}]+)\}", print_styles)
+        if "display:none!important" in declarations.replace(" ", "")
+    ]
+    assert any(
+        ".check-submit" in selectors
+        and '.knowledge-check input[type="radio"]' in selectors
+        for selectors in hidden_selectors
+    )
+    assert "details:not([open]) > :not(summary) { display: block; }" in print_styles
 
 
 def test_course_has_navigation_and_progressive_disclosure():

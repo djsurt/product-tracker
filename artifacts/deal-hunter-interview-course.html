@@ -131,7 +131,7 @@
 
     @media print {
       body { background: #fff; }
-      .skip-link, .course-sidebar, #mobile-syllabus, #course-header section, #course-header button, .module-complete { display: none !important; }
+      .skip-link, .course-sidebar, #mobile-syllabus, #course-header section, #course-header button, .module-complete, .check-submit, .knowledge-check input[type="radio"] { display: none !important; }
       #course-header { padding: 0; color: var(--ink); background: none; }
       #course-header h1 { font-size: 2rem; }
       .course-shell, #course-finish { display: block; width: 100%; margin: 0; }
@@ -699,8 +699,9 @@
     }
 
     function focusAndScroll(element) {
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       element.setAttribute("tabindex", "-1");
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      element.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
       element.focus({ preventScroll: true });
     }
 
