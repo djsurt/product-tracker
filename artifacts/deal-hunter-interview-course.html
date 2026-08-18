@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Deal Hunter Interview Course</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; line-height: 1.55; }
+    body { max-width: 76rem; margin: 0 auto; padding: 1.25rem; }
+    header, nav, article, footer { margin-block: 1.5rem; }
+    .course-module { border-top: 1px solid currentColor; padding-top: 1.5rem; }
+    .module-kicker, .module-objective, .module-summary { max-width: 68ch; }
+    .knowledge-check { border-inline-start: .3rem solid currentColor; padding-inline-start: 1rem; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    .skip-link:focus { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; white-space: normal; }
+    nav ul { columns: 2; }
+    button { font: inherit; padding: .5rem .75rem; }
+  </style>
+</head>
+<body>
+  <a class="skip-link sr-only" href="#course-content">Skip to course content</a>
+  <header id="course-header">
+    <p>Interview study companion</p>
+    <h1>Tell the Deal Hunter engineering story</h1>
+    <p>Plan for two to three hours of focused study. This course turns the repository’s working price-tracking system into clear, honest interview answers.</p>
+    <p><strong>Project:</strong> Deal Hunter lets a signed-in user track products, collect offers from sources, compare prices, receive alerts, and use a browser UI, MCP tools, live updates, and an optional 3D preview.</p>
+    <section aria-label="Overall course progress">
+      <p>Overall progress: <span id="overall-progress">0 of 11 modules complete</span></p>
+      <progress id="course-progress" value="0" max="11">0 of 11</progress>
+    </section>
+    <p>
+      <button id="continue-course" type="button">Continue course</button>
+      <button id="print-course" type="button">Print course</button>
+      <button id="reset-progress" type="button">Reset progress</button>
+    </p>
+  </header>
+
+  <nav id="desktop-syllabus" aria-label="Course syllabus">
+    <h2>Course syllabus</h2>
+    <ul>
+      <li><a href="#module-project-story">Module 1: Project story</a></li>
+      <li><a href="#module-system-architecture">Module 2: System architecture</a></li>
+      <li><a href="#module-database-modeling">Module 3: Database modeling</a></li>
+      <li><a href="#module-async-redis">Module 4: Async work and Redis</a></li>
+      <li><a href="#module-reliability">Module 5: Reliability</a></li>
+      <li><a href="#module-api-security-ui">Module 6: API, security, and UI</a></li>
+      <li><a href="#module-ai-mcp">Module 7: AI and MCP</a></li>
+      <li><a href="#module-aws-cicd">Module 8: AWS and CI/CD</a></li>
+      <li><a href="#module-scaling">Module 9: Scaling</a></li>
+      <li><a href="#module-new-grad-fundamentals">Module 10: New-grad fundamentals</a></li>
+      <li><a href="#module-interview-practice">Module 11: Interview practice</a></li>
+    </ul>
+  </nav>
+  <details id="mobile-syllabus">
+    <summary>Open course syllabus</summary>
+    <nav aria-label="Mobile course syllabus">
+      <ul>
+        <li><a href="#module-project-story">Module 1: Project story</a></li>
+        <li><a href="#module-system-architecture">Module 2: System architecture</a></li>
+        <li><a href="#module-database-modeling">Module 3: Database modeling</a></li>
+        <li><a href="#module-async-redis">Module 4: Async work and Redis</a></li>
+        <li><a href="#module-reliability">Module 5: Reliability</a></li>
+        <li><a href="#module-api-security-ui">Module 6: API, security, and UI</a></li>
+        <li><a href="#module-ai-mcp">Module 7: AI and MCP</a></li>
+        <li><a href="#module-aws-cicd">Module 8: AWS and CI/CD</a></li>
+        <li><a href="#module-scaling">Module 9: Scaling</a></li>
+        <li><a href="#module-new-grad-fundamentals">Module 10: New-grad fundamentals</a></li>
+        <li><a href="#module-interview-practice">Module 11: Interview practice</a></li>
+      </ul>
+    </nav>
+  </details>
+
+  <noscript><p>This course remains fully readable without JavaScript; progress tracking is unavailable.</p></noscript>
+  <main id="course-content">
+    <article class="course-module" id="module-project-story" data-module-id="project-story" data-minutes="12">
+      <header class="module-header">
+        <p class="module-kicker">Module 1 · 12 min</p>
+        <h2>Tell the project story</h2>
+        <p class="module-objective">After this module, you can introduce Deal Hunter as a concrete product and accurately frame your contribution.</p>
+      </header>
+      <section>
+        <h3>Start with the user problem</h3>
+        <p>People compare listings manually, miss price drops, and cannot easily see whether a deal is good. Deal Hunter makes a wishlist, searches multiple price sources, records price history, and alerts the owner when a rule is met.</p>
+      </section>
+      <section>
+        <h3>Explain phased delivery</h3>
+        <p>The repository grew from a FastAPI, PostgreSQL, and Redis scaffold through auth and CRUD, a Celery pipeline, sources and caching, alerts, a server-rendered UI, screenshot intake, MCP, server-sent events, and an optional 3D preview. That sequence keeps each phase runnable and demoable.</p>
+        <p>Frame contribution honestly: say what you built, learned, or would improve; do not invent a team size, ownership role, production traffic, or business metric.</p>
+      </section>
+      <section>
+        <h3>Practice the opening</h3>
+        <p><strong>30-second pitch:</strong> “Deal Hunter is a price-tracking wishlist. A FastAPI API stores each user’s products, Celery workers collect offers through a shared source interface, and PostgreSQL keeps price history so the app can show a best deal and send alerts.”</p>
+        <p><strong>60-second pitch:</strong> Add that slow provider work is off the request path, Redis coordinates the queue, cache, and locks, and the UI, MCP endpoint, and deployment demonstrate how the same core model can serve several interfaces.</p>
+      </section>
+      <section class="knowledge-check" data-check-id="project-story-check">
+        <h3>Recall</h3><p>Why did you build it? Answer with the user’s comparison-and-alert problem, then name the technical learning goal rather than claiming unmeasured impact.</p>
+      </section>
+      <section class="module-summary"><h3>Summary</h3><p>Lead with the problem, describe phased delivery, and make every contribution claim traceable to the repository.</p></section>
+      <button type="button" class="module-complete" data-module="project-story" aria-pressed="false">Mark module complete</button>
+    </article>
+
+    <article class="course-module" id="module-system-architecture" data-module-id="system-architecture" data-minutes="16">
+      <header class="module-header">
+        <p class="module-kicker">Module 2 · 16 min</p>
+        <h2>Trace the system architecture</h2>
+        <p class="module-objective">After this module, you can map responsibilities and trace an offer from a user action to stored price history.</p>
+      </header>
+      <section>
+        <h3>Responsibility map</h3>
+        <p>The browser calls FastAPI. FastAPI authenticates, validates, and persists user intent in PostgreSQL; Redis carries Celery work. Celery Beat schedules sweeps, workers call source adapters, and workers append price observations before notification work can react to a drop.</p>
+      </section>
+      <section>
+        <h3>Add and refresh flows</h3>
+        <p>Adding a product stores a query and enqueues discovery. A source implementation satisfies the <code>PriceSource</code> protocol and returns a <code>NormalizedOffer</code>; discovery upserts the resulting offers. A refresh later fetches a known offer, records a price point, updates its cheap <code>last_price</code> snapshot, and may publish a price-drop event.</p>
+        <p>The API stays thin because provider calls are slow and unreliable. Keeping them in workers protects request latency and lets queue retries absorb transient problems.</p>
+      </section>
+      <details class="deep-dive"><summary>Trade-off: one adapter contract</summary><p><code>PriceSource</code> makes mock, API, and scraper adapters interchangeable at the pipeline boundary. It does not make providers equally reliable; each still has its own rate limits, fields, and failure behavior.</p></details>
+      <section class="knowledge-check" data-check-id="system-architecture-check"><h3>Recall</h3><p>Trace one price update: schedule or refresh, Redis broker, Celery worker, source fetch, <code>NormalizedOffer</code>, offer update, <code>PricePoint</code>, then any alert path.</p></section>
+      <section class="module-summary"><h3>Summary</h3><p>FastAPI owns fast user-facing operations; workers own source I/O; PostgreSQL owns durable product and price state.</p></section>
+      <button type="button" class="module-complete" data-module="system-architecture" aria-pressed="false">Mark module complete</button>
+    </article>
+
+    <article class="course-module" id="module-database-modeling" data-module-id="database-modeling" data-minutes="14">
+      <header class="module-header">
+        <p class="module-kicker">Module 3 · 14 min</p>
+        <h2>Model products, offers, and price history</h2>
+        <p class="module-objective">After this module, you can explain the database choices behind a trustworthy price timeline.</p>
+      </header>
+      <section>
+        <h3>Entities and identity</h3>
+        <p><code>User</code> owns <code>TrackedProduct</code> rows; a product has many <code>Offer</code> rows; each offer has many <code>PricePoint</code> rows. Alerts, click events, API tokens, dead letters, and a generated 3D model support the main path. UUID primary keys avoid sequential identifiers, and server timestamp defaults let the database provide a shared clock.</p>
+      </section>
+      <section>
+        <h3>Money and integrity</h3>
+        <p>Money uses SQL <code>Numeric</code> and Python <code>Decimal</code>, not float, so values such as 19.99 compare predictably. The unique constraint on product, source, and source-side id makes discovery idempotent. The history index on offer id and observed time supports price-range reads.</p>
+      </section>
+      <section>
+        <h3>History versus snapshot</h3>
+        <p><code>PricePoint</code> is append-only source of truth for charts and lowest-in-window logic. <code>Offer.last_price</code> is a denormalized snapshot that makes common reads cheaper. Today numerical comparison assumes active sources report USD; currency normalization is a current limitation before comparing offers in different currencies.</p>
+      </section>
+      <section class="knowledge-check" data-check-id="database-modeling-check"><h3>Check</h3><p>Why keep both history and <code>last_price</code>? History answers temporal questions; the snapshot avoids repeatedly scanning the log for the current card.</p></section>
+      <section class="module-summary"><h3>Summary</h3><p>Use UUIDs, database timestamps, Decimal money, constraints, and indexes to make price history correct and queryable.</p></section>
+      <button type="button" class="module-complete" data-module="database-modeling" aria-pressed="false">Mark module complete</button>
+    </article>
+
+    <article class="course-module" id="module-async-redis" data-module-id="async-redis" data-minutes="17">
+      <header class="module-header">
+        <p class="module-kicker">Module 4 · 17 min</p>
+        <h2>Use asynchronous work and Redis deliberately</h2>
+        <p class="module-objective">After this module, you can explain queue vocabulary, delivery semantics, and Redis’s several roles.</p>
+      </header>
+      <section>
+        <h3>Queue vocabulary</h3>
+        <p>A producer enqueues work, Redis is the broker, a Celery worker consumes it, and Celery Beat produces scheduled refreshes. Queue delivery is at-least-once: a task may run again after a failure boundary, so work must tolerate repeats.</p>
+      </section>
+      <section>
+        <h3>Idempotency and Redis roles</h3>
+        <p>Redis is used as broker, cache, lock store, rate-limit state, shared metrics store, pub/sub transport for live updates, and model-generation quota counter. A per-offer lock using <code>SET NX EX</code> reduces duplicate concurrent refreshes; the database unique constraint is the final integrity backstop.</p>
+        <p>Best-deal reads use cache-aside: read a cache key, compute and store the result on a miss, then invalidate or expire it when price data changes.</p>
+      </section>
+      <details class="deep-dive"><summary>Blast radius trade-off</summary><p>A single Redis service simplifies a learning project, but an outage can affect queueing, caching, locks, rate limiting, metrics, and pub/sub together. Separating critical roles is a later resilience decision, not an automatic first step.</p></details>
+      <section class="knowledge-check" data-check-id="async-redis-check"><h3>Check</h3><p>What makes at-least-once safe here? Idempotency: repeatable discovery, unique offer identity, append-only observations, and a short-lived per-offer lock.</p></section>
+      <section class="module-summary"><h3>Summary</h3><p>Use Celery to move source I/O off requests and design every task for repeat delivery.</p></section>
+      <button type="button" class="module-complete" data-module="async-redis" aria-pressed="false">Mark module complete</button>
+    </article>
+
+    <article class="course-module" id="module-reliability" data-module-id="reliability" data-minutes="15">
+      <header class="module-header">
+        <p class="module-kicker">Module 5 · 15 min</p>
+        <h2>Make failure behavior explicit</h2>
+        <p class="module-objective">After this module, you can distinguish permanent, throttling, and transient failures without hiding bad prices.</p>
+      </header>
+      <section>
+        <h3>Classify source outcomes</h3>
+        <p>An HTTP 404 or 410 means a listing is delisted: mark it permanently gone and stop refreshing it. HTTP 429 means backpressure; do not immediately retry into a provider quota storm. A transient timeout or provider error can use exponential retry.</p>
+      </section>
+      <section>
+        <h3>Exhaustion and partial work</h3>
+        <p>After retries are exhausted, record a dead letter and mark the offer stale so its old price is not trusted. Discovery can have partial failure: return offers from healthy sources and surface failed sources instead of discarding useful results. Alert debounce prevents repeated notifications inside a cooldown.</p>
+      </section>
+      <section>
+        <h3>Commit boundaries</h3>
+        <p>The notification path uses post-send commit behavior: only record the debounce anchor after a successful send. That avoids suppressing a notification merely because state was written before delivery failed, while accepting that distributed delivery still needs careful idempotency reasoning.</p>
+      </section>
+      <section class="knowledge-check" data-check-id="reliability-check"><h3>Check</h3><p>Contrast a 404 with a transient timeout. The first is a durable listing fact; the second is evidence to retry with bounded exponential delay.</p></section>
+      <section class="module-summary"><h3>Summary</h3><p>Classify failures, preserve partial usefulness, avoid retry storms, and make stale data visibly untrusted.</p></section>
+      <button type="button" class="module-complete" data-module="reliability" aria-pressed="false">Mark module complete</button>
+    </article>
+
+    <article class="course-module" id="module-api-security-ui" data-module-id="api-security-ui" data-minutes="15">
+      <header class="module-header">
+        <p class="module-kicker">Module 6 · 15 min</p>
+        <h2>Connect API, security, and interface choices</h2>
+        <p class="module-objective">After this module, you can describe FastAPI boundaries and browser-facing security without conflating authentication and authorization.</p>
+      </header>
+      <section>
+        <h3>Security boundaries</h3>
+        <p>FastAPI dependencies resolve a session and current user. Authentication answers who a request represents; authorization answers whether that user may access a row. The browser session is an httponly cookie carrying a JWT. Passwords use bcrypt hashing, while API tokens are stored as a SHA-256 digest and shown in plaintext only once.</p>
+        <p>Owner-scoped lookup intentionally returns not-found behavior for another user’s item, reducing object enumeration rather than revealing that an inaccessible id exists.</p>
+      </section>
+      <section>
+        <h3>UI delivery</h3>
+        <p>The web app is FastAPI plus Jinja templates and HTMX fragments, avoiding a separate browser build. This is a good fit for a compact, server-rendered product where the API and HTML share domain rules.</p>
+      </section>
+      <section>
+        <h3>Live-update trade-off</h3>
+        <p>Earlier pages used polling. Server-sent events are a one-way server-to-browser stream for price and model progress, simpler than WebSockets when the browser does not need a bidirectional live protocol. Polling is simpler to operate for low-frequency updates; WebSockets are appropriate when interactive two-way messages are required.</p>
+      </section>
+      <section class="knowledge-check" data-check-id="api-security-ui-check"><h3>Check</h3><p>Give one example of authorization after authentication: a valid JWT is insufficient unless the requested tracked product belongs to that user.</p></section>
+      <section class="module-summary"><h3>Summary</h3><p>Dependencies provide request boundaries, owner checks enforce access, and SSE adds live server updates without a full socket protocol.</p></section>
+      <button type="button" class="module-complete" data-module="api-security-ui" aria-pressed="false">Mark module complete</button>
+    </article>
+
+    <article class="course-module" id="module-ai-mcp" data-module-id="ai-mcp" data-minutes="12">
+      <header class="module-header">
+        <p class="module-kicker">Module 7 · 12 min</p>
+        <h2>Discuss AI features and MCP safely</h2>
+        <p class="module-objective">After this module, you can explain optional AI workflows and the user boundary around remote tools.</p>
+      </header>
+      <section>
+        <h3>Optional AI features</h3>
+        <p>Screenshot identification is configuration-gated: an image can be interpreted into a title and search query before it enters the existing pipeline. Meshy generation is also configuration-gated and asynchronous: a Celery task turns a product image into downloadable GLB and USDZ assets, with live progress.</p>
+        <p>A per-item model row is cache-once by design, and a monthly quota bounds paid generation. This design fails closed when the key is absent and does not require every user to wait for a model.</p>
+      </section>
+      <section>
+        <h3>MCP boundary</h3>
+        <p>The MCP endpoint uses Streamable HTTP and bearer-token authentication. Its six tools are <code>list_wishlist</code>, <code>add_tracked_product</code>, <code>get_best_deal</code>, <code>get_price_history</code>, <code>search_deals</code>, and <code>create_alert</code>. Per-user tool isolation comes from resolving the token to a user and passing that user into service calls.</p>
+      </section>
+      <details class="deep-dive"><summary>Storage limitation</summary><p>Generated files use a shared filesystem volume in the current deployment. That is workable on one host but becomes a filesystem scaling limitation when web and workers do not share a disk; object storage is the next step.</p></details>
+      <section class="knowledge-check" data-check-id="ai-mcp-check"><h3>Check</h3><p>Why is an MCP token not enough by itself? Each tool still needs a user-scoped database operation so one token cannot expose another user’s wishlist.</p></section>
+      <section class="module-summary"><h3>Summary</h3><p>Gate optional AI work, bound its cost, and treat MCP as another authenticated interface to the same user-owned data.</p></section>
+      <button type="button" class="module-complete" data-module="ai-mcp" aria-pressed="false">Mark module complete</button>
+    </article>
+
+    <article class="course-module" id="module-aws-cicd" data-module-id="aws-cicd" data-minutes="22">
+      <header class="module-header">
+        <p class="module-kicker">Module 8 · 22 min</p>
+        <h2>Walk through AWS and CI/CD choices</h2>
+        <p class="module-objective">After this module, you can defend the compact AWS deployment and name its operational limits.</p>
+      </header>
+      <section>
+        <h3>Request and network path</h3>
+        <p>An Elastic IP reaches Caddy on a public EC2 instance, which proxies to FastAPI in Docker. PostgreSQL runs in private RDS subnets and Redis in private ElastiCache subnets. Security-group references allow the web security group to reach those stores; the design has no SSH ingress because Systems Manager (SSM) provides administration.</p>
+      </section>
+      <section>
+        <h3>Build and deploy</h3>
+        <p>GitHub Actions uses GitHub OIDC to assume a narrowly scoped AWS role, builds the image, pushes it to ECR, and sends a deploy command through SSM. The host pulls the image, runs database migrations, starts the compose services, and a health smoke test checks the public health endpoint. Parameter Store supplies application secrets to the instance role.</p>
+      </section>
+      <section>
+        <h3>Terraform state and deliberate limits</h3>
+        <p>Terraform state is configured for S3 with DynamoDB locking. The small deployment omits a NAT gateway and an ALB to reduce cost and moving parts: private databases need no outbound internet path, while the single public host is the ingress point. That also means fewer availability guarantees.</p>
+        <p>Deploying an image tag named <code>latest</code> has a consistency risk if a host pulls at an unexpected moment; an immutable commit tag is safer. The workflow has no automated rollback, so a failed health check needs an explicit recovery procedure.</p>
+      </section>
+      <section class="knowledge-check" data-check-id="aws-cicd-check"><h3>Check</h3><p>Why is GitHub OIDC preferable to a long-lived cloud key in CI? It exchanges a short-lived identity token for a role under repository and branch conditions.</p></section>
+      <section class="module-summary"><h3>Summary</h3><p>This is a cost-conscious single-host deployment with private data services, SSM administration, ECR delivery, and clearly named rollout risks.</p></section>
+      <button type="button" class="module-complete" data-module="aws-cicd" aria-pressed="false">Mark module complete</button>
+    </article>
+
+    <article class="course-module" id="module-scaling" data-module-id="scaling" data-minutes="15">
+      <header class="module-header">
+        <p class="module-kicker">Module 9 · 15 min</p>
+        <h2>Scale from evidence, not fashion</h2>
+        <p class="module-objective">After this module, you can give a staged scaling answer tied to observed bottlenecks.</p>
+      </header>
+      <section>
+        <h3>Measure first</h3>
+        <p>Watch queue depth and task latency, database load, Redis memory, and provider quotas. Those measurements reveal whether the bottleneck is worker capacity, a slow query, cache pressure, or a source limit that more workers would make worse.</p>
+      </section>
+      <section>
+        <h3>Name today’s risk</h3>
+        <p>The public EC2 host, single Redis node, and non-Multi-AZ database create a single point of failure. For 10x demand, separate web and worker processes onto independently sized compute while retaining the existing domain boundaries.</p>
+      </section>
+      <section>
+        <h3>Describe 100x only when needed</h3>
+        <p>At 100x, move to ECS behind an ALB with autoscaling, use Multi-AZ managed data services, and put generated model files in S3. Microservices are not the first step: the current API, worker, and source boundaries already isolate the important responsibilities, and distributed service coordination adds cost before evidence demands it.</p>
+      </section>
+      <section class="knowledge-check" data-check-id="scaling-check"><h3>Check</h3><p>A provider is returning 429 responses while the queue grows. Which metric changes your plan first: worker count, provider quota, or query latency? Explain why quota and backpressure lead.</p></section>
+      <section class="module-summary"><h3>Summary</h3><p>Scale the measured constraint, separate web from workers at 10x, and reserve ECS, ALB, autoscaling, Multi-AZ, and S3 for the 100x case.</p></section>
+      <button type="button" class="module-complete" data-module="scaling" aria-pressed="false">Mark module complete</button>
+    </article>
+
+    <article class="course-module" id="module-new-grad-fundamentals" data-module-id="new-grad-fundamentals" data-minutes="25">
+      <header class="module-header">
+        <p class="module-kicker">Module 10 · 25 min</p>
+        <h2>Rehearse new-grad engineering fundamentals</h2>
+        <p class="module-objective">After this module, you can connect core CS and web concepts to a real Deal Hunter decision.</p>
+      </header>
+      <section>
+        <h3>Data structures and Big O</h3>
+        <p>A hash map gives expected O(1) lookup for source registry entries or an offer keyed by identity. A list preserves an ordered set of offers or price points; a set deduplicates source names; a queue represents pending Celery work; and a heap would efficiently retain the cheapest offers. State the Big O and the real component, not just a textbook definition.</p>
+      </section>
+      <section>
+        <h3>Database fundamentals</h3>
+        <p>An index accelerates lookups such as price history by offer and observation time. Joins combine offers with price points for a best-deal query. A transaction groups a worker’s related writes, while constraints preserve offer identity. Watch for N+1 when rendering products and their offers; select-in loading is used to reduce that pattern.</p>
+      </section>
+      <section>
+        <h3>Network and operating-system fundamentals</h3>
+        <p>HTTP carries browser and provider requests; DNS resolves a host name; TLS protects the connection; status codes distinguish success, client error, and server error; and timeouts stop a provider call from blocking forever. A process has its own address space, while a thread shares one process’s memory. A race condition can occur when two workers refresh one offer, so the system uses a lock; careless lock ordering can cause deadlock.</p>
+        <p>Price-source network calls are I/O-bound, which fits asynchronous/background concurrency. CPU-bound work competes for processor time and would need a different capacity plan than mostly I/O-bound fetching.</p>
+      </section>
+      <section class="knowledge-check" data-check-id="new-grad-fundamentals-check"><h3>Check</h3><p>Choose the right concept for each Deal Hunter component: source registry—hash map; refresh broker—queue; unique offer identity—constraint; a competing refresh—race condition and lock.</p></section>
+      <section class="module-summary"><h3>Summary</h3><p>Definitions become persuasive when every Big O, transaction, protocol, and concurrency concept is tied to a working component.</p></section>
+      <button type="button" class="module-complete" data-module="new-grad-fundamentals" aria-pressed="false">Mark module complete</button>
+    </article>
+
+    <article class="course-module" id="module-interview-practice" data-module-id="interview-practice" data-minutes="20">
+      <header class="module-header">
+        <p class="module-kicker">Module 11 · 20 min</p>
+        <h2>Practice concise, evidence-based answers</h2>
+        <p class="module-objective">After this module, you can answer likely technical and behavioral questions without overclaiming.</p>
+      </header>
+      <section>
+        <h3>Fifteen technical prompts</h3>
+        <details class="model-answer"><summary>1. Why is FastAPI thin?</summary><p>It validates and persists fast user-facing requests; source calls run in Celery because they are slow and unreliable.</p></details>
+        <details class="model-answer"><summary>2. What does PriceSource buy you?</summary><p>It gives every adapter one search/fetch boundary that returns NormalizedOffer, so the pipeline is independent of provider implementation.</p></details>
+        <details class="model-answer"><summary>3. Why Decimal?</summary><p>Numeric and Decimal avoid float rounding errors in money comparisons.</p></details>
+        <details class="model-answer"><summary>4. Why append-only price history?</summary><p>It preserves observations for charts and lowest-in-window queries; last_price is only a current snapshot.</p></details>
+        <details class="model-answer"><summary>5. How is discovery idempotent?</summary><p>A unique offer identity and upsert logic prevent repeat discovery from creating duplicates.</p></details>
+        <details class="model-answer"><summary>6. What does at-least-once mean?</summary><p>A task can run more than once, so locks, constraints, and repeat-safe operations are required.</p></details>
+        <details class="model-answer"><summary>7. Why Redis?</summary><p>It is the broker plus cache, lock, rate-limit, metrics, pub/sub, and quota store; that convenience also enlarges outage blast radius.</p></details>
+        <details class="model-answer"><summary>8. How do you handle 404, 410, and 429?</summary><p>Delist 404/410 offers, treat 429 as backpressure, and reserve exponential retry for transient failures.</p></details>
+        <details class="model-answer"><summary>9. What happens after retries fail?</summary><p>Create a dead letter and mark the offer stale so an old value is not presented as reliable.</p></details>
+        <details class="model-answer"><summary>10. Authentication versus authorization?</summary><p>Authentication identifies the caller; authorization verifies ownership before returning a product or model.</p></details>
+        <details class="model-answer"><summary>11. Why store API-token digests?</summary><p>SHA-256 storage limits exposure if the database leaks; plaintext is displayed only at creation.</p></details>
+        <details class="model-answer"><summary>12. Why SSE instead of WebSockets?</summary><p>Prices and generation progress flow one way to the browser, so server-sent events are simpler than a bidirectional protocol.</p></details>
+        <details class="model-answer"><summary>13. How is MCP isolated per user?</summary><p>The bearer token resolves to one user, and tools invoke user-scoped service functions.</p></details>
+        <details class="model-answer"><summary>14. What does the AWS deployment protect?</summary><p>RDS and ElastiCache are private, security groups reference the web host, and SSM replaces SSH.</p></details>
+        <details class="model-answer"><summary>15. What is your first scaling move?</summary><p>Measure queue depth, latency, database load, Redis memory, and provider quotas, then separate web and workers before introducing microservices.</p></details>
+      </section>
+      <section>
+        <h3>Five STAR story prompts</h3>
+        <ol>
+          <li>Describe a time you turned an ambiguous product problem into the Deal Hunter delivery phases.</li>
+          <li>Describe a reliability decision, using 404/410 delisting versus a transient retry.</li>
+          <li>Describe a trade-off, using Redis convenience versus blast radius.</li>
+          <li>Describe how you learned a new interface, using MCP or server-sent events.</li>
+          <li>Describe a mistake or limitation, using raw-currency comparison, single-host availability, or missing automated rollback.</li>
+        </ol>
+        <p>Use STAR: situation, task, action, result. For behavioral answers, distinguish a repository outcome from a production customer metric you did not measure.</p>
+      </section>
+      <section>
+        <h3>Avoid overclaiming</h3>
+        <ul>
+          <li>Do not say the system handles real scale; say which measurements and changes you would use at 10x or 100x.</li>
+          <li>Do not say every source is reliable; name config gates, rate limits, partial failures, and the current currency limitation.</li>
+          <li>Do not claim a team decision as your own; state exactly what you implemented or would validate.</li>
+        </ul>
+      </section>
+      <section class="knowledge-check" data-check-id="interview-practice-check"><h3>Readiness check</h3><p>Without notes, give your pitch, trace a flow, defend one trade-off, name one limitation, tell one failure story, and give one scaling answer.</p></section>
+      <section class="module-summary"><h3>Summary</h3><p>Use native model answers to rehearse, then replace them with concise explanations grounded in the code.</p></section>
+      <button type="button" class="module-complete" data-module="interview-practice" aria-pressed="false">Mark module complete</button>
+    </article>
+  </main>
+  <footer id="course-finish">
+    <h2>Final readiness checklist</h2>
+    <ul>
+      <li>I can deliver the 30-second and 60-second project pitch.</li>
+      <li>I can trace add-product and price-refresh flows.</li>
+      <li>I can explain one data, reliability, security, and deployment trade-off.</li>
+      <li>I can state the raw-currency, single-host, and rollback limitations honestly.</li>
+    </ul>
+    <p>Next study recommendation: draw the architecture from memory, then practice one technical and one behavioral answer aloud with a two-minute timer.</p>
+  </footer>
+  <p id="course-live-region" class="sr-only" aria-live="polite"></p>
+</body>
+</html>
