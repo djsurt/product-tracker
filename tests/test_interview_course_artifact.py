@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import subprocess
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -56,6 +57,36 @@ def parse_course() -> tuple[CourseParser, str]:
     return parser, html
 
 
+def run_inline_script(harness: str) -> dict:
+    """Evaluate the real course script with a small, dependency-free DOM seam."""
+    _, html = parse_course()
+    script = html.rsplit("<script>", 1)[1].split("</script>", 1)[0]
+    runner = f"""
+const fs = require("fs");
+const vm = require("vm");
+const context = {{
+  console,
+  Set,
+  window: {{ matchMedia: () => ({{ matches: false }}) }},
+  document: {{ addEventListener: () => {{}}, documentElement: {{ classList: {{ add: () => {{}} }} }} }},
+}};
+vm.createContext(context);
+vm.runInContext(fs.readFileSync(0, "utf8"), context);
+const result = vm.runInContext({harness!r}, context);
+process.stdout.write(JSON.stringify(result));
+"""
+    completed = subprocess.run(
+        ["node", "-e", runner],
+        input=script,
+        text=True,
+        check=True,
+        capture_output=True,
+    )
+    import json
+
+    return json.loads(completed.stdout)
+
+
 def test_course_has_complete_ordered_curriculum():
     parser, html = parse_course()
     assert parser.module_ids == MODULE_IDS
@@ -78,6 +109,29 @@ def test_course_covers_repository_specific_system():
     )
     for term in required:
         assert term in text
+
+
+def test_course_describes_current_repository_behavior_without_overclaiming():
+    parser, _ = parse_course()
+    text = " ".join(parser.text).lower()
+    for claim in (
+        "early acknowledgement",
+        "worker dies mid-task",
+        "explicit retries",
+        "overlapping schedules",
+        "any valid three-letter currency",
+        "cross-currency",
+        "background discovery logs",
+        "only interactive mcp search",
+        "terminal success or failure",
+        "branch-scoped",
+        "wildcard resources",
+        "claude vision",
+    ):
+        assert claim in text
+    assert "queue delivery is at-least-once" not in text
+    assert "assume a narrowly scoped aws role" not in text
+    assert "with live progress" not in text
 
 
 def test_course_contains_new_grad_and_interview_practice_content():
@@ -153,6 +207,17 @@ def test_print_hides_quiz_actions_and_reveals_disclosures():
     assert "details:not([open]) > :not(summary) { display: block; }" in print_styles
 
 
+def test_print_reflows_diagrams_without_horizontal_scrolling():
+    _, html = parse_course()
+    print_styles = html.split("@media print", 1)[1].split("</style>", 1)[0]
+    assert ".visual { overflow: visible; max-width: 100%; }" in print_styles
+    assert (
+        ".visual-grid, .flow-grid, .stage-grid, .architecture-route, "
+        ".architecture-data, .failure-grid, .entity-chain, .supporting-records "
+        "{ min-width: 0; max-width: 100%; }"
+    ) in print_styles
+
+
 def test_course_has_navigation_and_progressive_disclosure():
     parser, html = parse_course()
     for element_id in (
@@ -225,6 +290,119 @@ def test_state_is_versioned_and_answers_are_not_persisted():
     assert "completedModules" in save_body
     assert "openDetails" in save_body
     assert "answer" not in save_body.lower()
+
+
+def test_malformed_and_structurally_invalid_state_is_discarded_without_disabling_storage():
+    result = run_inline_script(
+        """
+const outcomes = [];
+for (const stored of [
+  "{broken",
+  JSON.stringify({version: 2, completedModules: [], openDetails: []}),
+  JSON.stringify({version: 1, completedModules: "bad", openDetails: []}),
+  JSON.stringify({version: 1, completedModules: [42], openDetails: []}),
+]) {
+  const operations = [];
+  window.localStorage = {
+    getItem: () => stored,
+    removeItem: (key) => operations.push(["remove", key]),
+    setItem: (key, value) => operations.push(["set", key, JSON.parse(value)]),
+  };
+  storageAvailable = true;
+  const loaded = loadState();
+  saveState({version: 1, completedModules: ["project-story"], openDetails: []});
+  outcomes.push({loaded, operations, storageAvailable});
+}
+outcomes;
+"""
+    )
+    for outcome in result:
+        assert outcome["loaded"] == {
+            "version": 1,
+            "completedModules": [],
+            "openDetails": [],
+        }
+        assert outcome["storageAvailable"] is True
+        assert [operation[0] for operation in outcome["operations"]] == ["remove", "set"]
+        assert outcome["operations"][1][2]["completedModules"] == ["project-story"]
+
+
+def test_storage_access_failure_disables_persistence():
+    result = run_inline_script(
+        """
+window.localStorage = {getItem: () => { throw new Error("blocked"); }};
+storageAvailable = true;
+const loaded = loadState();
+({loaded, storageAvailable});
+"""
+    )
+    assert result == {
+        "loaded": {"version": 1, "completedModules": [], "openDetails": []},
+        "storageAvailable": False,
+    }
+
+
+def test_all_complete_state_reveals_textual_completion_message():
+    result = run_inline_script(
+        """
+const classNames = new Set();
+const footer = {classList: {toggle: (name, enabled) => enabled ? classNames.add(name) : classNames.delete(name)}};
+const completionMessage = {hidden: true};
+const values = {};
+const modules = Array.from({length: 11}, (_, index) => ({
+  id: `module-${index}`,
+  dataset: {moduleId: `module-${index}`, minutes: "1"},
+}));
+document.querySelector = (selector) => ({
+  "#overall-progress": values.overall ||= {},
+  "#progress-label": values.label ||= {},
+  "#remaining-time": values.remaining ||= {},
+  "#course-progress": values.progress ||= {},
+  "#storage-notice": values.notice ||= {},
+  "#course-finish": footer,
+  "#course-completion-message": completionMessage,
+}[selector]);
+document.querySelectorAll = (selector) => selector === "[data-module-id]" ? modules : [];
+courseState = {version: 1, completedModules: modules.map((module) => module.dataset.moduleId), openDetails: []};
+renderProgress();
+({completeClass: classNames.has("course-complete"), messageHidden: completionMessage.hidden, progress: values.label.textContent});
+"""
+    )
+    assert result == {
+        "completeClass": True,
+        "messageHidden": False,
+        "progress": "100% complete",
+    }
+
+
+def test_static_fallback_hides_javascript_only_buttons_and_keeps_course_content():
+    _, html = parse_course()
+    button_tags = re.findall(r"<button\b[^>]*>", html)
+    assert button_tags
+    assert (
+        "html:not(.js-enabled) #course-header button, "
+        "html:not(.js-enabled) .module-complete, "
+        "html:not(.js-enabled) .check-submit { display: none; }"
+    ) in html
+    noscript = html.split("<noscript>", 1)[1].split("</noscript>", 1)[0].lower()
+    for phrase in (
+        "progress tracking and interactive controls are unavailable",
+        "lessons, questions, explanations, and model answers remain readable",
+    ):
+        assert phrase in noscript
+
+
+def test_finish_checklist_covers_failure_story_scaling_and_reduced_motion():
+    _, html = parse_course()
+    footer = html.split('<footer id="course-finish"', 1)[1].split("</footer>", 1)[0]
+    assert "failure story" in footer.lower()
+    assert "scaling answer" in footer.lower()
+    assert 'id="course-completion-message"' in footer
+    assert "@keyframes" not in html
+    reduced_motion = html.split("@media (prefers-reduced-motion: reduce)", 1)[1].split(
+        "@media print", 1
+    )[0]
+    assert "transition-duration: .01ms !important" in reduced_motion
 
 
 def test_every_knowledge_check_has_feedback_and_explanation():
