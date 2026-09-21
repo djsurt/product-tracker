@@ -1,47 +1,31 @@
-{# Live marketplace search results. Sorted by price ascending — the first row
-   is the cheapest and gets the same highlight as the best offer on item pages. #}
 {% if results %}
-  {% if failed_sources %}
-    <p class="hint">{{ failed_sources | join(", ") }} didn’t respond — showing everything else.</p>
-  {% endif %}
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>Source</th><th>Title</th><th>Price</th><th></th><th></th></tr></thead>
-    <tbody>
-      {% for r in results %}
-      <tr {% if loop.first %}class="is-best"{% endif %}>
-        <td style="font-weight:600;">{{ r.source }}</td>
-        <td class="muted">
-          <span class="with-thumb" style="gap:10px;">
-            {% with img = r.image_url, size = 'thumb-sm' %}{% include "_thumb.html" %}{% endwith %}
-            <span>{{ r.title }}</span>
-          </span>
-        </td>
-        <td class="price">${{ "%.2f" | format(r.price) }}
-          {% if loop.first %}<span class="badge below_target" style="margin-left:6px;">cheapest</span>{% endif %}</td>
-        <td>{% if r.url %}<a href="{{ r.url }}" target="_blank" rel="noopener">View →</a>{% endif %}</td>
-        <td style="text-align:right;">
-          <form hx-post="/app/marketplace/track" hx-swap="outerHTML" style="margin:0;display:inline;">
-            <input type="hidden" name="title" value="{{ r.title }}">
-            <input type="hidden" name="query" value="{{ query }}">
-            <button class="secondary" type="submit">Track</button>
+  {% if failed_sources %}<p class="hint" style="margin-bottom:20px">{{ failed_sources | join(", ") }} didn’t respond — showing everything else.</p>{% endif %}
+  <div class="results-heading"><h2>Finds for “{{ query }}”</h2><span>{{ results | length }} results · Lowest price first</span></div>
+  <div class="product-grid">
+    {% for r in results %}
+    <article class="product-card market-card">
+      <div class="product-visual">
+        {% with img = r.image_url, size = '', thumb_title = r.title %}{% include "_thumb.html" %}{% endwith %}
+        {% if loop.first %}<div class="product-status"><span class="badge below_target">cheapest find</span></div>{% endif %}
+      </div>
+      <div class="product-body">
+        <h3>{% if r.url %}<a class="product-title" href="{{ r.url }}" target="_blank" rel="noopener">{{ r.title }}</a>{% else %}{{ r.title }}{% endif %}</h3>
+        <p class="product-source">{{ r.source | replace('_', ' ') | title }}</p>
+        <div class="product-price-line"><span class="product-price">${{ "%.2f" | format(r.price) }}</span><span class="product-price-caption">{{ r.currency }}</span></div>
+        <div class="product-footer">
+          {% if r.url %}<a href="{{ r.url }}" target="_blank" rel="noopener">Visit store <span aria-hidden="true">↗</span></a>{% endif %}
+          <form hx-post="/app/marketplace/track" hx-swap="outerHTML" hx-disabled-elt="find button">
+            <input type="hidden" name="title" value="{{ r.title }}"><input type="hidden" name="query" value="{{ query }}">
+            <button class="secondary" type="submit"><span class="htmx-indicator spinner" aria-hidden="true"></span>Track product <span aria-hidden="true">+</span></button>
           </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
   </div>
-  <p class="hint">Tracking adds “{{ query }}” to your wishlist — we’ll keep watching all of these prices for you.</p>
+  <p class="wishlist-note">Track a find to watch prices for “{{ query }}” across stores.</p>
 {% elif query %}
-<div class="empty">
-  <svg class="empty-illo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <circle cx="11" cy="11" r="7"/>
-    <path d="M21 21l-4.35-4.35"/>
-    <path d="M8.5 11h5" stroke-width="1.3"/>
-  </svg>
-  <strong>No offers found for “{{ query }}”</strong>
-  Try fewer or more general words — store search is fussier than you’d hope.
-</div>
+  <div class="empty search-empty"><strong>No finds for “{{ query }}” just yet.</strong><p>Try a shorter product name or a model number. A slightly different search can make all the difference.</p>{% if failed_sources %}<p class="hint">{{ failed_sources | join(", ") }} didn’t respond. Try again in a moment.</p>{% endif %}</div>
+{% else %}
+  <div class="empty"><strong>What would you love to find?</strong><p>Enter a product name above to start exploring.</p></div>
 {% endif %}

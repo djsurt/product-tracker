@@ -5,6 +5,11 @@ __pycache__/
 .venv/
 venv/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
 
 # Env / secrets
 .env
@@ -15,6 +20,12 @@ venv/
 .idea/
 .vscode/
 .worktrees/
+
+# Local assistant/design-tool state
+.claude/
+.impeccable/hook.cache.json
+infra/.impeccable/
+.superpowers/sdd/
 
 # Node (frontend, later phases)
 node_modules/
@@ -29,6 +40,9 @@ celerybeat-schedule*
 *.tfstate.*
 infra/terraform.tfvars
 infra/backend.hcl
+*.tfplan
+crash.log
+crash.*.log
 
 # Generated 3D model files (Phase 10)
 model3d/

@@ -647,7 +647,12 @@ def item_detail(
     return templates.TemplateResponse(
         request,
         "item_detail.html",
-        {"user": user, "item": item, "alerts": alerts, **_model3d_context(item, db)},
+        {
+            "user": user,
+            "alerts": alerts,
+            **_offers_context(item, db),
+            **_model3d_context(item, db),
+        },
     )
 
 

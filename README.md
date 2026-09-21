@@ -257,12 +257,24 @@ pytest
 ## Project layout
 
 ```
-api/          FastAPI app (routers, app entrypoint)
-api/templates/ Jinja templates for the HTMX UI    (Phase 6)
-core/         shared: settings, db/session, ORM models
-workers/      Celery app + tasks            (Phase 2+)
-sources/      price-source adapters          (Phase 2+)
-mock_store/   seeded fake storefront         (Phase 2)
-migrations/   Alembic migrations
-tests/        test suite
+api/            FastAPI app, routers, templates, and static assets
+core/           Shared settings, database, domain models, and services
+workers/        Celery application and background tasks
+sources/        Price-source adapters and scraping helpers
+mock_store/     Seeded storefront used for local development
+migrations/     Alembic migrations
+scripts/        Operational helper scripts
+infra/          Terraform for AWS infrastructure and instance bootstrap
+tests/          Automated test suite
+docs/           Deployment runbook and implementation/design notes
+artifacts/      Standalone project artifacts (not shipped in the app image)
 ```
+
+## Product direction
+
+The next product milestone is broad, trustworthy price discovery: resolve the
+exact product, find candidate merchants through shopping and web indexes, verify
+their pages, and refresh confirmed offers. See
+[`docs/internet-scale-price-discovery.md`](docs/internet-scale-price-discovery.md)
+for the architecture, data model, provider strategy, evaluation criteria, and
+staged implementation plan.

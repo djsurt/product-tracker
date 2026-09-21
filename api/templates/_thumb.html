@@ -1,11 +1,24 @@
-{# Product thumbnail. Vars: `img` (url or None), `size` ('' | 'thumb-lg' | 'thumb-sm').
-   The brand tag icon is the placeholder; a loaded image covers it, and a broken
-   image removes itself so the placeholder shows again. #}
+{# Store photography when available, with a quiet category illustration as fallback. #}
+{% set product_name = (thumb_title | default(item.title if item is defined else '')) | lower %}
 <span class="thumb {{ size or '' }}" aria-hidden="true">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
        stroke-linecap="round" stroke-linejoin="round">
+    {% if 'headphone' in product_name or 'wh-1000' in product_name %}
+    <path d="M4 14v-3a8 8 0 0 1 16 0v3M7 11V9a5 5 0 0 1 10 0v2"/><rect x="3" y="11" width="5" height="10" rx="2.5"/><rect x="16" y="11" width="5" height="10" rx="2.5"/>
+    {% elif 'nintendo' in product_name or 'playstation' in product_name or 'xbox' in product_name or 'controller' in product_name %}
+    <rect x="2" y="5" width="20" height="14" rx="4"/><path d="M7 5v14M17 5v14M4 9h0m0 3h0M20 11h0m0 3h0"/><rect x="9" y="8" width="6" height="8" rx="1"/>
+    {% elif 'kettle' in product_name %}
+    <path d="M7 8h10l2 11H5ZM8 5h8M12 3v2M5 17c-4-1-4-7-4-7l6 3M17 8c7-2 7 8 2 8M4 22h16"/>
+    {% elif 'oven' in product_name or 'pot' in product_name or 'le creuset' in product_name %}
+    <path d="M5 10h14v8a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3ZM3 10h18M6 8c1-5 11-5 12 0M12 3v2M5 13H2v3h3M19 13h3v3h-3"/>
+    {% elif 'shoe' in product_name or 'new balance' in product_name or 'nike' in product_name %}
+    <path d="m3 7 5 3 3-5 4 8 6 3v4H3a1 1 0 0 1-1-1V9ZM2 17h17M11 9l3-1M13 12l3-1"/>
+    {% elif 'camera' in product_name %}
+    <path d="M8 6 9 3h6l1 3h5v15H3V6Z"/><circle cx="12" cy="13" r="4"/><path d="M18 9h1"/>
+    {% else %}
     <path d="M12.6 2.6a2 2 0 0 1 1.4-.6H20a2 2 0 0 1 2 2v6a2 2 0 0 1-.6 1.4l-9 9a2 2 0 0 1-2.8 0l-6-6a2 2 0 0 1 0-2.8z"/>
     <circle cx="17" cy="7" r="1.8"/>
+    {% endif %}
   </svg>
   {% if img %}<img src="{{ img }}" alt="" loading="lazy" referrerpolicy="no-referrer"
                    onerror="this.remove()">{% endif %}

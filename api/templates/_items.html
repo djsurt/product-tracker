@@ -1,56 +1,50 @@
+<div class="wishlist-heading">
+  <h2>Your little wishlist <span class="item-count" aria-label="{{ items | length }} products">{{ items | length }}</span></h2>
+</div>
 {% if items %}
-<div class="card">
-  <div class="item-list">
-    {% for item in items %}
-    {% set deal = deals.get(item.id) if deals else None %}
-    <div class="item-row{% if not item.is_active %} is-paused{% endif %}">
-      <div class="with-thumb">
-        {% with img = images.get(item.id) if images else None, size = '' %}{% include "_thumb.html" %}{% endwith %}
-        <div style="min-width:0;">
-          <a class="i-title" href="/app/items/{{ item.id }}">{{ item.title }}</a>
-          <span class="i-query">{{ item.query }}</span>
+<div class="product-grid" id="wishlist-grid">
+  {% set labels = {'below_target': 'below target', 'all_time_low': 'lowest recorded', 'great': 'great price', 'fair': 'watching for a drop', 'no_data': 'checking prices'} %}
+  {% for item in items %}
+  {% set deal = deals.get(item.id) if deals else None %}
+  {% set best = (item.offers | selectattr('id', 'equalto', deal.best_offer_id) | first) if deal and deal.best_offer_id else None %}
+  <article class="product-card{% if not item.is_active %} is-paused{% endif %}" data-item-id="{{ item.id }}">
+    <div class="product-visual">
+      <a href="/app/items/{{ item.id }}" class="product-image-link" aria-label="View {{ item.title }}">{% with img = images.get(item.id) if images else None, size = '' %}{% include "_thumb.html" %}{% endwith %}</a>
+      <div class="product-status">
+        {% if not item.is_active %}<span class="badge paused">paused</span>
+        {% elif deal and deal.best_price is not none %}<span class="badge {{ deal.verdict }}">{{ labels.get(deal.verdict, deal.verdict | replace('_', ' ')) }}</span>
+        {% else %}<span class="badge no_data">checking prices</span>{% endif %}
+      </div>
+      <details class="product-menu popover">
+        <summary aria-label="Options for {{ item.title }}"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/></svg></summary>
+        <div class="popover-panel">
+          <button class="ghost" hx-post="/app/items/{{ item.id }}/toggle" hx-target="#items" hx-swap="innerHTML" hx-disabled-elt="this" data-success-message="{{ 'Tracking resumed.' if not item.is_active else 'Tracking paused. Resume whenever you’re ready.' }}">{{ "Resume" if not item.is_active else "Pause" }} tracking</button>
+          <button class="danger" hx-delete="/app/items/{{ item.id }}" hx-target="#items" hx-swap="innerHTML" hx-disabled-elt="this" hx-confirm="Remove {{ item.title }} from your wishlist? Its price history and alerts will also be deleted." data-success-message="Product removed from your wishlist.">Delete product</button>
         </div>
+      </details>
+    </div>
+    <div class="product-body">
+      <h3><a class="product-title" href="/app/items/{{ item.id }}">{{ item.title }}</a></h3>
+      <p class="product-source">{% if best %}{{ best.source | replace('_', ' ') | title }} <span aria-hidden="true">·</span> Checked {{ best.last_seen_at | reltime }}{% elif item.is_active %}Finding the right price for you{% else %}Ready when you are{% endif %}</p>
+      <div class="product-price-line">
+        {% if deal and deal.best_price is not none %}<span class="product-price">${{ deal.best_price }}</span><span class="product-price-caption">{{ 'last known price' if not item.is_active else 'best price' }}{% if deal.currency != 'USD' %} · {{ deal.currency }}{% endif %}</span>
+        {% else %}<span class="product-price product-price-waiting">{{ 'On a little break' if not item.is_active else 'On the lookout…' }}</span>{% endif %}
       </div>
-      <div class="i-cell-deal">
-        {% if not item.is_active %}
-          <span class="badge paused">paused</span>
-        {% elif deal and deal.best_price is not none %}
-          <span class="price">${{ deal.best_price }}</span>
-          <span class="badge {{ deal.verdict }}">{{ deal.verdict | replace("_", " ") }}</span>
-        {% else %}
-          <span class="badge no_data">checking…</span>
-        {% endif %}
-      </div>
-      <div class="i-cell-target">
-        {% if item.target_price is not none %}
-          <span class="chip"><span class="chip-label">target</span> ${{ item.target_price }}</span>
-        {% else %}
-          <span class="chip"><span class="chip-label">no target</span></span>
-        {% endif %}
-      </div>
-      <div class="i-row-actions" style="text-align:right;">
-        <button class="ghost"
-                hx-post="/app/items/{{ item.id }}/toggle"
-                hx-target="#items" hx-swap="innerHTML">
-          {{ "Resume" if not item.is_active else "Pause" }}</button>
-        <button class="danger"
-                hx-delete="/app/items/{{ item.id }}"
-                hx-target="#items" hx-swap="innerHTML"
-                hx-confirm="Stop tracking {{ item.title }}?">Delete</button>
+      <div class="product-footer">
+        <span class="product-target">{% if item.target_price is not none %}Your target <strong>${{ item.target_price }}</strong>{% else %}No target set{% endif %}</span>
+        <a href="/app/items/{{ item.id }}" aria-label="View deal for {{ item.title }}">View deal <span aria-hidden="true">↗</span></a>
       </div>
     </div>
-    {% endfor %}
-  </div>
+  </article>
+  {% endfor %}
 </div>
+<p class="wishlist-note"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6Z"/><path d="m8 12 3 3 5-6"/></svg>Set a price alert on any product. We’ll email you when it’s time.</p>
 {% else %}
-<div class="empty">
-  <svg class="empty-illo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <path d="M12.6 3.6a2 2 0 0 1 1.4-.6H19a2 2 0 0 1 2 2v5a2 2 0 0 1-.6 1.4l-8 8a2 2 0 0 1-2.8 0l-5-5a2 2 0 0 1 0-2.8z"/>
-    <circle cx="16.5" cy="7.5" r="1.4"/>
-    <path d="M3 3.5l1.2 1.2M2 8h1.7M7.5 2v1.7" stroke-width="1.3"/>
-  </svg>
-  <strong>Your wishlist is empty</strong>
-  Add a product above — or <a href="/app/marketplace">browse live deals</a> and track one from there.
+<div class="empty wishlist-empty">
+  <svg class="empty-illustration" viewBox="0 0 130 90" fill="none" aria-hidden="true"><ellipse cx="65" cy="77" rx="48" ry="6" fill="#e6e8dd"/><rect x="33" y="18" width="62" height="56" rx="9" fill="#f7e8dc" stroke="#d3ad94" transform="rotate(-7 64 45)"/><path d="M48 18V13a15 15 0 0 1 30 0v5" stroke="#b94e32" stroke-width="2" stroke-linecap="round"/><path d="M56 46h20M66 36v20" stroke="#b94e32" stroke-width="2" stroke-linecap="round"/><path d="m108 28 2-6 2 6 6 2-6 2-2 6-2-6-6-2Z" fill="#89997c"/></svg>
+  <strong>A home for your “maybe someday.”</strong>
+  <p>Your wishlist is empty. Add that thing you’ve had your eye on, and we’ll help you find its moment.</p>
+  <button type="button" class="secondary" data-focus-add>Add your first product <span aria-hidden="true">↗</span></button>
+  <ol class="onboarding-steps"><li><span>1</span>Save something you love</li><li><span>2</span>Set your ideal price</li><li><span>3</span>Catch a better deal</li></ol>
 </div>
 {% endif %}

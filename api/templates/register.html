@@ -1,26 +1,23 @@
 {% extends "base.html" %}
-{% block title %}Register · Deal Hunter{% endblock %}
+{% block title %}Create an account · Deal Hunter{% endblock %}
 {% block content %}
-<div class="card auth-card">
-  <svg class="auth-mark" viewBox="0 0 24 24" aria-hidden="true">
-    <path fill="var(--accent)" d="M12.6 2.6a2 2 0 0 1 1.4-.6H20a2 2 0 0 1 2 2v6a2 2 0 0 1-.6 1.4l-9 9a2 2 0 0 1-2.8 0l-6-6a2 2 0 0 1 0-2.8z"/>
-    <circle cx="17" cy="7" r="1.8" fill="white"/>
-  </svg>
-  <h1>Start hunting deals</h1>
-  <p class="lead" style="margin-bottom:20px;">Create an account and let us watch prices for you.</p>
-  <form method="post" action="/register" class="stack">
-    <div>
-      <label for="email">Email</label>
-      <input id="email" name="email" type="email" autocomplete="email" required autofocus>
-    </div>
-    <div>
-      <label for="password">Password</label>
-      <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required>
-      <p class="hint" style="margin-top:6px;">At least 8 characters.</p>
-    </div>
-    <button type="submit" style="width:100%">Create account</button>
-    {% if error %}<p class="error">{{ error }}</p>{% endif %}
-  </form>
-  <p class="hint" style="margin-top:18px;">Already have an account? <a href="/login">Log in</a></p>
+<div class="auth-layout">
+  <section class="auth-story">
+    <p class="eyebrow">Good things are worth watching</p>
+    <h1>Less searching.<br><em>More finding.</em></h1>
+    <p class="lead">From “I love that” to “what a good find.” Keep your favorites in one place and let us watch the prices.</p>
+    {% include "_lookout.html" %}
+  </section>
+  <section class="card auth-card" aria-labelledby="register-heading">
+    <h2 id="register-heading">Make yourself at home.</h2>
+    <p class="lead">Your next good deal starts with a little wishlist.</p>
+    <form method="post" action="/register" class="stack">
+      <div><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required></div>
+      <div><label for="password">Choose a password</label><input id="password" name="password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" aria-describedby="password-hint" required><p id="password-hint" class="hint">Make it at least 8 characters.</p></div>
+      {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+      <button type="submit">Create your wishlist <span aria-hidden="true">↗</span></button>
+    </form>
+    <p class="auth-switch">Already have an account? <a href="/login">Log in</a></p>
+  </section>
 </div>
 {% endblock %}

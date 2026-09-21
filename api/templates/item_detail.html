@@ -1,92 +1,42 @@
 {% extends "base.html" %}
 {% block title %}{{ item.title }} · Deal Hunter{% endblock %}
 {% block content %}
-<p style="margin:0 0 10px;"><a href="/app">← Back to wishlist</a></p>
-<h1>{{ item.title }}</h1>
-<p class="lead" style="margin-bottom:12px;">Query: <code>{{ item.query }}</code></p>
-<form method="post" action="/app/items/{{ item.id }}/target"
-      class="row" style="gap:8px;margin-bottom:22px;">
-  <label for="target" style="margin:0;">Target price</label>
-  <input id="target" name="target_price" type="number" step="0.01" min="0"
-         value="{{ item.target_price if item.target_price is not none else '' }}"
-         placeholder="none set" style="width:120px;">
-  <button class="secondary" type="submit">Save</button>
-  <span class="hint" style="margin:0;">The verdict and “below target” alerts follow this number.</span>
-</form>
-
-<div class="card">
-  <div class="section-head">
-    <h2>Live offers</h2>
-    <button class="secondary"
-            hx-post="/app/items/{{ item.id }}/refresh"
-            hx-target="#offers" hx-swap="innerHTML">
-      <span class="htmx-indicator" aria-hidden="true">⏳</span>
-      Refresh now</button>
-  </div>
-  <p class="hint"><span class="live-dot" aria-hidden="true"></span>Live — prices stream in the moment a worker records them.</p>
-  <div hx-ext="sse" sse-connect="/app/items/{{ item.id }}/stream">
-    {% if m3d_enabled %}
-    <div style="margin-top:14px;">
-      <h3 style="margin:0 0 8px;">3D preview</h3>
-      <div id="model3d" sse-swap="model3d">{% include "_model3d.html" %}</div>
+<section class="detail-intro">
+  <a class="breadcrumb" href="/app"><span aria-hidden="true">←</span> Back to your wishlist</a>
+  <h1>{{ item.title }}</h1>
+  <p class="lead">A closer look at the price. A little more confidence in your next purchase.</p>
+</section>
+<div class="detail-layout">
+  <section class="card offers-card" aria-labelledby="offers-heading">
+    <div class="section-head">
+      <h2 id="offers-heading">Live offers</h2>
+      <button class="secondary" hx-post="/app/items/{{ item.id }}/refresh" hx-target="#offers" hx-swap="innerHTML" hx-disabled-elt="this" data-success-message="Price check requested. New prices will appear here."><span class="htmx-indicator spinner" aria-hidden="true"></span><svg class="icon idle-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1"/></svg>Check prices</button>
     </div>
-    {% endif %}
-    <div id="offers" sse-swap="offers" style="margin-top:14px;">
-      <div aria-hidden="true">
-        <div class="skel skel-verdict"></div>
-        <div class="skel skel-row"></div>
-        <div class="skel skel-row"></div>
-        <div class="skel skel-row"></div>
-      </div>
-      <span class="muted" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);">Loading offers…</span>
+    <p class="live-status"><span class="live-dot" aria-hidden="true"></span>{{ 'Latest prices, with updates as we find them.' if item.is_active else 'Tracking is paused. Resume it from your wishlist.' }}</p>
+    <div hx-ext="sse" sse-connect="/app/items/{{ item.id }}/stream">
+      <div id="offers" sse-swap="offers">{% include "_offers.html" %}</div>
     </div>
-  </div>
-</div>
-
-{% if m3d_enabled %}
-<script type="module" src="/static/model-viewer.min.js"></script>
-<script>
-  // Accessibility: honor prefers-reduced-motion for the 3D auto-rotate.
-  // Applies to viewers swapped in later too (SSE), via a mutation observer.
-  (function () {
-    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    var strip = function (root) {
-      (root.querySelectorAll ? root.querySelectorAll('model-viewer[auto-rotate]') : [])
-        .forEach(function (v) { v.removeAttribute('auto-rotate'); });
-    };
-    strip(document);
-    new MutationObserver(function (muts) {
-      muts.forEach(function (m) { m.addedNodes.forEach(function (n) {
-        if (n.nodeType === 1) strip(n);
-      }); });
-    }).observe(document.body, { childList: true, subtree: true });
-  })();
-</script>
-{% endif %}
-
-<div class="card">
-  <h2>Price alerts</h2>
-  <p class="hint" style="margin-top:-6px;margin-bottom:14px;">Get an email the moment a price hits your number.</p>
-  <form hx-post="/app/items/{{ item.id }}/alerts" hx-target="#alerts" hx-swap="innerHTML"
-        hx-on::after-request="if(event.detail.successful) this.reset()">
-    <div class="row" style="align-items:flex-end;">
-      <div class="grow">
-        <label for="rule">Rule</label>
-        <select id="rule" name="rule">
-          <option value="below_target">Below target / threshold</option>
-          <option value="pct_drop">Percent drop</option>
-        </select>
-      </div>
-      <div style="flex:0 0 150px;">
-        <label for="threshold">Threshold</label>
-        <input id="threshold" name="threshold" type="number" step="0.01" min="0"
-               placeholder="price or %">
-      </div>
-      <div><button type="submit">Add alert</button></div>
-    </div>
-  </form>
-  <div id="alerts" style="margin-top:14px;">
-    {% include "_alerts.html" %}
-  </div>
+  </section>
+  <aside class="detail-sidebar" aria-label="Tracking preferences">
+    <section class="card">
+      <h2>Your happy price</h2>
+      <p class="hint">What would make this an easy yes? Set a target and we’ll show you when it’s a match.</p>
+      <form method="post" action="/app/items/{{ item.id }}/target" class="target-form">
+        <label for="target">Target price</label>
+        <div class="input-wrap"><span class="input-prefix" aria-hidden="true">$</span><input id="target" name="target_price" type="number" inputmode="decimal" step="0.01" min="0" value="{{ item.target_price if item.target_price is not none else '' }}" placeholder="Your ideal price"></div>
+        <button class="secondary" type="submit">Save target</button>
+      </form>
+    </section>
+    <section class="card">
+      <h2>Let the deal come to you.</h2>
+      <p class="hint">Choose your price and we’ll email you when the best offer reaches it.</p>
+      <form class="alert-form" hx-post="/app/items/{{ item.id }}/alerts" hx-target="#alerts" hx-swap="innerHTML" hx-disabled-elt="find button" hx-on::after-request="if(event.detail.successful) this.reset()" data-success-message="Price alert set. We’ll keep an eye on it.">
+        <input type="hidden" name="rule" value="below_target">
+        <div><label for="threshold">Email me at or below</label><div class="input-wrap"><span class="input-prefix" aria-hidden="true">$</span><input id="threshold" name="threshold" type="number" inputmode="decimal" step="0.01" min="0" placeholder="{{ 'Use my target price' if item.target_price is not none else 'e.g. 150' }}" aria-describedby="threshold-hint" {% if item.target_price is none %}required{% endif %}></div><p class="hint" id="threshold-hint">{{ 'Leave blank to use your target price.' if item.target_price is not none else 'Enter the price you’d like us to watch for.' }}</p></div>
+        <button type="submit"><span class="htmx-indicator spinner" aria-hidden="true"></span>Set price alert <span aria-hidden="true">↗</span></button>
+      </form>
+      <div id="alerts" aria-live="polite">{% include "_alerts.html" %}</div>
+    </section>
+  </aside>
 </div>
 {% endblock %}

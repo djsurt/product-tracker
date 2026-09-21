@@ -27,22 +27,28 @@
   <div class="v-right">
     <span class="badge {{ deal.verdict }}">{{ deal.verdict | replace("_", " ") }}</span>
     {% if deal.best_offer_id %}
-      <a class="btn buy{% if vclass == 'good' %} celebrate{% endif %}"
-         href="/go/{{ deal.best_offer_id }}" target="_blank" rel="noopener">Buy now →</a>
+      <a class="btn buy" href="/go/{{ deal.best_offer_id }}" target="_blank" rel="noopener">View at store ↗</a>
     {% endif %}
   </div>
 </div>
 
-{% if spark %}<div style="margin:16px 0 4px;">{{ spark | safe }}</div>{% endif %}
+{% if spark %}
+<section class="chart-section" aria-label="Price history">
+  <div class="chart-heading"><h3>A little price perspective</h3><span>Recent price history</span></div>
+  {{ spark | safe }}
+  <div class="chart-caption"><span>Earlier observations</span><span>Latest price</span></div>
+</section>
+{% endif %}
 
 {% if offers %}
-<div class="table-wrap" style="margin-top:14px;">
-<table>
+<h3 class="offers-title">Compare your options <span class="muted">· {{ offers | length }}</span></h3>
+<div class="table-wrap" tabindex="0" role="region" aria-label="Compare store prices">
+<table class="offers-table">
   <thead><tr><th>Source</th><th>Title</th><th>Price</th><th>Stock</th><th>Checked</th><th></th></tr></thead>
   <tbody>
     {% for o in offers %}
     <tr {% if deal.best_offer_id and o.id == deal.best_offer_id %}class="is-best"{% endif %}>
-      <td style="font-weight:600;">{{ o.source }}</td>
+      <td style="font-weight:600;">{{ o.source | replace('_', ' ') | title }}</td>
       <td class="muted">
         <span class="with-thumb" style="gap:10px;">
           {% with img = o.image_url, size = 'thumb-sm' %}{% include "_thumb.html" %}{% endwith %}
@@ -50,10 +56,10 @@
         </span>
       </td>
       <td class="price">{% if o.last_price is not none %}${{ o.last_price }}{% else %}—{% endif %}</td>
-      <td>{% if o.is_available %}<span class="badge active">in stock</span>{% else %}<span class="badge no_data">stale</span>{% endif %}</td>
+      <td>{% if o.is_delisted %}<span class="badge no_data">delisted</span>{% elif o.is_available %}<span class="badge active">in stock</span>{% else %}<span class="badge no_data">unavailable</span>{% endif %}</td>
       <td class="muted" style="white-space:nowrap;">{{ o.last_seen_at | reltime }}</td>
       <td style="text-align:right;">
-        {% if o.url %}<a href="/go/{{ o.id }}" target="_blank" rel="noopener">Buy →</a>{% endif %}
+        {% if o.url and not o.is_delisted %}<a href="/go/{{ o.id }}" target="_blank" rel="noopener">View ↗</a>{% endif %}
       </td>
     </tr>
     {% endfor %}
@@ -68,7 +74,7 @@
     <path d="M21 21l-4.35-4.35"/>
     <path d="M8 11h6M11 8v6" stroke-width="1.3"/>
   </svg>
-  <strong>No offers discovered yet</strong>
-  Hit “Refresh now” and give the workers a moment to fetch prices.
+  <strong>We’re on the lookout.</strong>
+  Prices will appear here as we find them. You can also choose “Check prices” to start a fresh search.
 </div>
 {% endif %}

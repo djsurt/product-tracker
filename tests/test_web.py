@@ -400,6 +400,25 @@ def test_track_url_is_idempotent_per_link(client, monkeypatch):
     assert len(distinct) == 1
 
 
+def test_item_detail_renders_current_price_before_live_stream(client, monkeypatch):
+    """A slow or disconnected event stream must not leave the price invisible."""
+    _register(client)
+    monkeypatch.setattr(
+        "sources.webpage.WebPageSource.fetch", lambda self, url: _fake_web_offer(url)
+    )
+    client.post(
+        "/app/items/track-url",
+        data={"url": "https://shop.example.com/p/kettle", "target_price": "70"},
+    )
+    item_id = _first_item_id(client)
+    detail = client.get(f"/app/items/{item_id}")
+    assert detail.status_code == 200
+    assert "$59.99" in detail.text
+    assert "View at store" in detail.text
+    assert 'sse-swap="offers"' in detail.text
+    assert 'class="skel skel-verdict"' not in detail.text
+
+
 def test_track_url_surfaces_scrape_failure_in_fragment(client, monkeypatch):
     _register(client)
 

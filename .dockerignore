@@ -1,14 +1,38 @@
-.git
+# Version-control and local tooling state
+.git/
+.github/
+.worktrees/
+.claude/
+.impeccable/
+.superpowers/
 .gitignore
+.dockerignore
+
+# Local Python/build state
+.venv/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+node_modules/
+dist/
+
+# Secrets and runtime-generated data
 .env
 .env.*
-.venv
-__pycache__/
-*.pyc
+celerybeat-schedule*
+model3d/
+
+# Repository-only material; none is needed by the runtime image
 tests/
 docs/
 infra/
-.github/
+artifacts/
 *.md
 docker-compose*.yml
 Caddyfile
+render.yaml
